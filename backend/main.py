@@ -296,6 +296,23 @@ async def update_bin(
     
     # Mise à jour des champs fournis
     update_data = bin_update.model_dump(exclude_none=True)
+    
+    # Handle layer_id explicitly if present
+    if "layer_id" in update_data:
+        new_layer_id = update_data.pop("layer_id")
+        
+        # Verify new layer exists
+        layer_result = await db.execute(select(Layer).where(Layer.id == new_layer_id))
+        new_layer = layer_result.scalar_one_or_none()
+        
+        if not new_layer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Couche destination {new_layer_id} non trouvée"
+            )
+            
+        bin_obj.layer_id = new_layer_id
+        
     for field, value in update_data.items():
         setattr(bin_obj, field, value)
     

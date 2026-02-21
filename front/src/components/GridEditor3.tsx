@@ -7,6 +7,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useStore } from '../store/useStore';
 import LayerSelector from './LayerSelector';
+import UnplacedDock from './UnplacedDock';
 import type { Bin } from '../types/api';
 
 import { apiClient } from '../services/api';
@@ -44,6 +45,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const [scale, setScale] = useState(1);
   const transformWrapperRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
+  const [draggedDockBin, setDraggedDockBin] = useState<Bin | null>(null);
 
   // Center grid logic
   useEffect(() => {
@@ -66,12 +68,15 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
   const currentLayer = currentDrawer.layers[currentLayerIndex];
   if (!currentLayer) return null;
+  
+  const placedBins = currentLayer.bins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
+  const unplacedBins = currentLayer.bins.filter(b => b.x_grid < 0 || b.y_grid < 0);
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
 
   // Convert bins to react-grid-layout format
-  const layout: Layout[] = currentLayer.bins.map((bin) => ({
+  const layout: Layout[] = placedBins.map((bin) => ({
     i: bin.bin_id,
     x: bin.x_grid,
     y: bin.y_grid,
@@ -92,12 +97,77 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     h: number,
     excludeBinId?: string
   ): boolean => {
-    return currentLayer.bins.some((bin) => {
+    return placedBins.some((bin) => {
       if (bin.bin_id === excludeBinId) return false;
       const overlapX = x < bin.x_grid + bin.width_units && x + w > bin.x_grid;
       const overlapY = y < bin.y_grid + bin.depth_units && y + h > bin.y_grid;
       return overlapX && overlapY;
     });
+  };
+
+  // Handle move to dock
+  const handleMoveToDock = async (binId: string) => {
+      // Optimistic update
+      const updatedBins = currentLayer.bins.map(b => 
+          b.bin_id === binId ? { ...b, x_grid: -1, y_grid: -1 } : b
+      );
+      
+      const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+        idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
+      );
+
+      setCurrentDrawer({
+        ...currentDrawer,
+        layers: updatedLayers,
+      }, true);
+
+      try {
+          await apiClient.updateBin(binId, { x_grid: -1, y_grid: -1 });
+      } catch (e) {
+          console.error("Failed to move bin to dock", e);
+      }
+  };
+
+  const handleDrop = async (_: Layout[], item: Layout, e: any) => {
+      // e might be wrapped
+      const event = e.nativeEvent || e; 
+      const binId = event.dataTransfer ? event.dataTransfer.getData("text/plain") : draggedDockBin?.bin_id;
+      
+      if (!binId) return;
+
+      const bin = unplacedBins.find(b => b.bin_id === binId) || currentLayer.bins.find(b => b.bin_id === binId);
+      if (!bin) return;
+      
+      // Calculate dropped position
+      const newX = Math.min(Math.max(0, Math.round(item.x)), currentDrawer.width_units - bin.width_units);
+      const newY = Math.min(Math.max(0, Math.round(item.y)), currentDrawer.depth_units - bin.depth_units);
+
+      // Check collision
+      if (isPositionOccupied(newX, newY, bin.width_units, bin.depth_units, binId)) {
+          alert('Position occupée');
+          return;
+      }
+
+      const updatedBins = currentLayer.bins.map(b => 
+          b.bin_id === binId ? { ...b, x_grid: newX, y_grid: newY } : b
+      );
+
+       const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+        idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
+      );
+
+      setCurrentDrawer({
+        ...currentDrawer,
+        layers: updatedLayers,
+      }, true);
+      
+      setDraggedDockBin(null);
+
+      try {
+          await apiClient.updateBin(binId, { x_grid: newX, y_grid: newY });
+      } catch (err) {
+          console.error(err);
+      }
   };
 
   // Handle layout change (only in edit mode)
@@ -107,6 +177,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
       const updatedBins = newLayout
         .map((item) => {
+          // Check if it's the placeholder or a real bin
+          if (item.i === '__dropping-elem__') return null;
+
           const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
           if (!existingBin) return null;
 
@@ -153,18 +226,31 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           };
         })
         .filter((bin): bin is Bin => bin !== null);
+      
+      const finalBins = currentLayer.bins.map(bin => {
+           const layoutItem = newLayout.find(l => l.i === bin.bin_id);
+           if (layoutItem) {
+               return {
+                   ...bin,
+                   x_grid: Math.round(layoutItem.x),
+                   y_grid: Math.round(layoutItem.y),
+                   width_units: Math.round(layoutItem.w),
+                   depth_units: Math.round(layoutItem.h)
+               };
+           }
+           return bin;
+      });
 
       const updatedLayers = currentDrawer.layers.map((layer, idx) =>
-        idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
+        idx === currentLayerIndex ? { ...layer, bins: finalBins } : layer
       );
 
       setCurrentDrawer({
         ...currentDrawer,
         layers: updatedLayers,
       }, true); // Preserve layer index
-      // Important: Do NOT reset currentLayerIndex here, it's handled by store
     },
-    [currentDrawer, currentLayerIndex, setCurrentDrawer, editMode]
+    [currentDrawer, currentLayerIndex, setCurrentDrawer, editMode] // Deps updated
   );
 
   // Add new bin (only in edit mode)
@@ -182,7 +268,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     // ... search logic ...
     for (let j = 0; j < currentDrawer.depth_units; j++) {
       for (let i = 0; i < currentDrawer.width_units; i++) {
-        if (!isPositionOccupied(i, j, 2, 2)) {
+        if (!isPositionOccupied(i, j, 1, 1)) {
           x = i;
           y = j;
           foundPosition = true;
@@ -193,7 +279,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     }
 
     if (!foundPosition) {
-      alert('Pas de place disponible pour une nouvelle boîte (2x2)');
+      alert('Pas de place disponible pour une nouvelle boîte (1x1)');
       return;
     }
 
@@ -201,8 +287,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     const newBinData = {
       x_grid: x,
       y_grid: y,
-      width_units: 2,
-      depth_units: 2,
+      width_units: 1,
+      depth_units: 1,
       color: getRandomColor(),
       content: {
         title: 'Nouvelle boîte',
@@ -410,17 +496,32 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
         {/* Delete button (edit mode only) */}
         {editMode === 'edit' && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteBin(bin.bin_id);
-            }}
-            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteBin(bin.bin_id);
+              }}
+              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity z-20"
+              title="Supprimer"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveToDock(bin.bin_id);
+              }}
+              className="absolute top-1 right-6 p-1 bg-yellow-500 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity z-20"
+              title="Déplacer vers la zone d'attente"
+            >
+               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
+          </>
         )}
       </motion.div>
     );
@@ -429,8 +530,25 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Top Left */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-        <LayerSelector />
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
+        <div className="pointer-events-auto">
+          <LayerSelector />
+        </div>
+      </div>
+
+      {/* Unplaced Dock - Right Side */}
+      <div className="absolute top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+         <div className="pointer-events-auto">
+            <UnplacedDock 
+                unplacedBins={unplacedBins}
+                onBinClick={(bin) => {
+                    setSelectedBin(bin);
+                    onBinClick(bin);
+                }}
+                onBinDoubleClick={onBinDoubleClick}
+                onDragStart={setDraggedDockBin}
+            />
+         </div>
       </div>
 
       {/* Floating Controls - Top Right */}
@@ -578,19 +696,26 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 preventCollision={true}
                 isDraggable={editMode === 'edit'}
                 isResizable={editMode === 'edit'}
+                isDroppable={editMode === 'edit'}
+                onDrop={handleDrop}
+                droppingItem={draggedDockBin ? { 
+                    i: draggedDockBin.bin_id, 
+                    w: draggedDockBin.width_units, 
+                    h: draggedDockBin.depth_units 
+                } : undefined}
                 margin={[0, 0]}
                 containerPadding={[0, 0]}
                 useCSSTransforms={true}
                 style={{ 
                   width: GRID_WIDTH, 
-                  height: GRID_HEIGHT,
-                  minWidth: GRID_WIDTH,
+                  height: GRID_HEIGHT, 
+                  minWidth: GRID_WIDTH, 
                   minHeight: GRID_HEIGHT,
                   maxWidth: GRID_WIDTH,
                   maxHeight: GRID_HEIGHT
                 }}
               >
-                {currentLayer.bins.map((bin) => (
+                {placedBins.map((bin) => (
                   <div key={bin.bin_id}>
                     {renderBin(bin)}
                   </div>

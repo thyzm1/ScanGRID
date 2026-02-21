@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { Bin, BinContent } from '../types/api';
+import { useStore } from '../store/useStore';
 
 interface BinEditorModalProps {
   bin: Bin | null;
@@ -9,6 +10,7 @@ interface BinEditorModalProps {
 }
 
 export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalProps) {
+  const { currentDrawer, currentLayerIndex } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<string[]>([]);
@@ -16,6 +18,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [photos, setPhotos] = useState<string[]>([]);
   const [newPhoto, setNewPhoto] = useState('');
   const [color, setColor] = useState('#3b82f6');
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (bin) {
@@ -24,8 +27,11 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       setItems(bin.content.items || []);
       setPhotos(bin.content.photos || []);
       setColor(bin.color || '#3b82f6');
+      if (currentDrawer && currentDrawer.layers[currentLayerIndex]) {
+          setSelectedLayerId(currentDrawer.layers[currentLayerIndex].layer_id);
+      }
     }
-  }, [bin]);
+  }, [bin, currentDrawer, currentLayerIndex]);
 
   if (!bin) return null;
 
@@ -42,6 +48,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       ...bin,
       content: updatedContent,
       color,
+      layer_id: selectedLayerId || undefined
     });
     onClose();
   };
@@ -130,6 +137,24 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {/* Layer Selection */}
+          {currentDrawer && (
+              <div>
+                  <label className="block text-sm font-semibold mb-2">Couche</label>
+                  <select
+                      className="input w-full"
+                      value={selectedLayerId || ''}
+                      onChange={(e) => setSelectedLayerId(e.target.value)}
+                  >
+                      {currentDrawer.layers.map((layer, idx) => (
+                          <option key={layer.layer_id} value={layer.layer_id}>
+                              Couche {idx + 1} (z-index: {layer.z_index})
+                          </option>
+                      ))}
+                  </select>
+              </div>
+          )}
+
           {/* Title */}
           <div>
             <label className="block text-sm font-semibold mb-2">

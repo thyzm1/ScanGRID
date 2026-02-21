@@ -24,6 +24,7 @@ export interface Bin {
   content: BinContent;
   color?: string;
   is_hole?: boolean;
+  layer_id?: string; // Added for moving bins
 }
 
 export interface Layer {

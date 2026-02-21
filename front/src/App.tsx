@@ -88,16 +88,38 @@ function App() {
       return;
     }
 
-    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
-      idx === currentLayerIndex
-        ? {
-            ...layer,
-            bins: layer.bins.map((b) =>
-              b.bin_id === updatedBin.bin_id ? updatedBin : b
-            ),
-          }
-        : layer
-    );
+    const currentLayer = currentDrawer.layers[currentLayerIndex];
+    const targetLayerId = updatedBin.layer_id || currentLayer.layer_id;
+    
+    let updatedLayers;
+
+    if (targetLayerId === currentLayer.layer_id) {
+        // Standard update (same layer)
+        updatedLayers = currentDrawer.layers.map((layer) =>
+          layer.layer_id === currentLayer.layer_id
+            ? {
+                ...layer,
+                bins: layer.bins.map((b) =>
+                  b.bin_id === updatedBin.bin_id ? updatedBin : b
+                ),
+              }
+            : layer
+        );
+    } else {
+        // Move to different layer
+        updatedLayers = currentDrawer.layers.map((layer) => {
+            if (layer.layer_id === currentLayer.layer_id) {
+                // Remove from source
+                return { ...layer, bins: layer.bins.filter(b => b.bin_id !== updatedBin.bin_id) };
+            }
+            if (layer.layer_id === targetLayerId) {
+                // Add to destination (set to Unplaced to avoid collisions)
+                const movedBin = { ...updatedBin, x_grid: -1, y_grid: -1 };
+                return { ...layer, bins: [...layer.bins, movedBin] };
+            }
+            return layer;
+        });
+    }
 
     setCurrentDrawer({
       ...currentDrawer,
@@ -106,15 +128,22 @@ function App() {
 
     // Send update to API
     const { bin_id, ...updateData } = updatedBin;
-    console.log('Sending API update for bin:', bin_id, updateData); // DEBUG LOG
     
-    apiClient.updateBin(bin_id, updateData)
-      .then((res) => console.log('API update success:', res))
-      .catch((err) => {
-        console.error('Failed to update bin API:', err);
-        // Optional: Revert optimistic update here if needed
-        // For now we just log the error since the user will see it on reload
-      });
+    // If we moved layers, we must ensure coordinates are updated todock (-1, -1) in the API call too, 
+    // AND layer_id is sent.
+    if (targetLayerId !== currentLayer.layer_id) {
+        // Override coords for move
+        const moveData = { ...updateData, x_grid: -1, y_grid: -1, layer_id: targetLayerId };
+        console.log('Sending API update for bin move:', bin_id, moveData);
+        apiClient.updateBin(bin_id, moveData)
+          .then((res) => console.log('API update success:', res))
+          .catch((err) => console.error('Failed to update bin API:', err));
+    } else {
+        console.log('Sending API update for bin:', bin_id, updateData);
+        apiClient.updateBin(bin_id, updateData)
+          .then((res) => console.log('API update success:', res))
+          .catch((err) => console.error('Failed to update bin API:', err));
+    }
 
     setSelectedBin(null); // Close after save
   };

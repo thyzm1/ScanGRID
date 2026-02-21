@@ -18,8 +18,8 @@ class BinContentSchema(BaseModel):
 # ============= SCHEMAS POUR BIN =============
 
 class BinBase(BaseModel):
-    x_grid: int = Field(..., ge=0, description="Coordonnée X dans la grille Gridfinity")
-    y_grid: int = Field(..., ge=0, description="Coordonnée Y dans la grille")
+    x_grid: int = Field(..., ge=-1, description="Coordonnée X dans la grille Gridfinity (-1 si en attente)")
+    y_grid: int = Field(..., ge=-1, description="Coordonnée Y dans la grille (-1 si en attente)")
     width_units: int = Field(..., ge=1, description="Largeur en unités Gridfinity")
     depth_units: int = Field(..., ge=1, description="Profondeur en unités Gridfinity")
     content: BinContentSchema = Field(..., description="Contenu structuré de la boîte")
@@ -34,13 +34,14 @@ class BinCreate(BinBase):
 
 class BinUpdate(BaseModel):
     """Schéma pour mettre à jour une boîte (tous les champs optionnels)"""
-    x_grid: Optional[int] = Field(None, ge=0)
-    y_grid: Optional[int] = Field(None, ge=0)
+    x_grid: Optional[int] = Field(None, ge=-1) # -1 allowed for "unplaced"
+    y_grid: Optional[int] = Field(None, ge=-1) # -1 allowed for "unplaced"
     width_units: Optional[int] = Field(None, ge=1)
     depth_units: Optional[int] = Field(None, ge=1)
     content: Optional[Dict[str, Any]] = None
     color: Optional[str] = None
     is_hole: Optional[bool] = None
+    layer_id: Optional[str] = Field(None, description="Déplacer vers une autre couche")
     
     model_config = ConfigDict(extra="forbid")
 
