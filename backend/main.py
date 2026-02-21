@@ -81,7 +81,7 @@ FRONTEND_DIST = Path(__file__).parent.parent / "front" / "dist"
 # mais pour une correction rapide et sûre, on va simplement ajouter 
 # une route de redirection ou monter l'app sous /api
 
-@app.get("/api/health", tags=["Health"])
+@api_router.get("/health", tags=["Health"])
 async def health_api():
     """Endpoint de santé (Mirror pour /api)"""
     return {"status": "healthy"}
@@ -93,7 +93,7 @@ if FRONTEND_DIST.exists():
 
 # ============= ENDPOINTS =============
 
-@app.get("/health", tags=["Health"])
+@api_router.get("/health", tags=["Health"])
 async def health():
     """Endpoint de santé pour vérifier que le serveur est actif"""
     return {
@@ -103,7 +103,7 @@ async def health():
     }
 
 
-@app.post(
+@api_router.post(
     "/drawers",
     response_model=DrawerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -175,7 +175,7 @@ async def create_or_replace_drawer(
         )
 
 
-@app.get(
+@api_router.get(
     "/drawers/{drawer_id}",
     response_model=DrawerResponse,
     tags=["Drawers"],
@@ -209,7 +209,7 @@ async def get_drawer(
     return DrawerResponse.model_validate(drawer)
 
 
-@app.get(
+@api_router.get(
     "/drawers",
     response_model=List[DrawerResponse],
     tags=["Drawers"],
@@ -233,7 +233,7 @@ async def list_drawers(
     return [DrawerResponse.model_validate(d) for d in drawers]
 
 
-@app.delete(
+@api_router.delete(
     "/drawers/{drawer_id}",
     response_model=SuccessResponse,
     tags=["Drawers"],
@@ -266,7 +266,7 @@ async def delete_drawer(
     return SuccessResponse(message=f"Tiroir {drawer_id} supprimé avec succès")
 
 
-@app.patch(
+@api_router.patch(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -306,7 +306,7 @@ async def update_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.get(
+@api_router.get(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -336,7 +336,7 @@ async def get_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.post(
+@api_router.post(
     "/drawers/{drawer_id}/layers",
     response_model=LayerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -377,7 +377,7 @@ async def create_layer(
     return LayerResponse.model_validate(layer)
 
 
-@app.post(
+@api_router.post(
     "/layers/{layer_id}/bins",
     response_model=BinResponse,
     status_code=status.HTTP_201_CREATED,
@@ -424,7 +424,7 @@ async def create_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.delete(
+@api_router.delete(
     "/bins/{bin_id}",
     response_model=SuccessResponse,
     tags=["Bins"],
@@ -457,6 +457,8 @@ async def delete_bin(
     return SuccessResponse(message=f"Boîte {bin_id} supprimée avec succès")
 
 
+# Monter le routeur API sous le préfixe /api
+app.include_router(api_router, prefix="/api")
 
 # ============= FRONTEND SPA CATCH-ALL =============
 
