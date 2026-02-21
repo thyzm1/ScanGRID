@@ -49,11 +49,26 @@ class Layer(Base):
         return f"<Layer(id={self.id}, z_index={self.z_index})>"
 
 
+class Category(Base):
+    __tablename__ = "categories"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    icon: Mapped[Optional[str]] = mapped_column(String, nullable=True, default="ri-folder-line")
+    
+    # Relations
+    bins: Mapped[List["Bin"]] = relationship("Bin", back_populates="category")
+
+    def __repr__(self):
+        return f"<Category(id={self.id}, name={self.name})>"
+
+
 class Bin(Base):
     __tablename__ = "bins"
     
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     layer_id: Mapped[str] = mapped_column(String, ForeignKey("layers.id", ondelete="CASCADE"), nullable=False)
+    category_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True) # New FK
     x_grid: Mapped[int] = mapped_column(Integer, nullable=False)
     y_grid: Mapped[int] = mapped_column(Integer, nullable=False)
     width_units: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -64,6 +79,7 @@ class Bin(Base):
     
     # Relations
     layer: Mapped["Layer"] = relationship("Layer", back_populates="bins")
+    category: Mapped[Optional["Category"]] = relationship("Category", back_populates="bins", lazy="selectin")
     
     def __repr__(self):
-        return f"<Bin(id={self.id}, pos=({self.x_grid},{self.y_grid}), title={self.content.get('title') if self.content else 'N/A'})>"
+        return f"<Bin(id={self.id}, pos=({self.x_grid},{self.y_grid}), category={self.category_id}, title={self.content.get('title') if self.content else 'N/A'})>"

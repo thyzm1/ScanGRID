@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Drawer, Bin } from '../types/api';
+import type { Drawer, Bin, Category } from '../types/api';
 
 export type ViewMode = '2D' | '3D';
 export type EditMode = 'view' | 'edit';
@@ -15,6 +15,17 @@ interface AppState {
 
   editMode: EditMode;
   setEditMode: (mode: EditMode) => void;
+
+  // Categories
+  categories: Category[];
+  setCategories: (categories: Category[]) => void;
+  addCategory: (category: Category) => void;
+
+  // Search & Filter
+  filterText: string;
+  setFilterText: (text: string) => void;
+  selectedCategoryId: string | null;
+  setSelectedCategoryId: (id: string | null) => void;
 
   // Drawers
   drawers: Drawer[];
@@ -65,6 +76,15 @@ export const useStore = create<AppState>((set) => ({
 
   editMode: 'view',
   setEditMode: (mode) => set({ editMode: mode }),
+
+  categories: [],
+  setCategories: (categories) => set({ categories }),
+  addCategory: (category) => set((state) => ({ categories: [...state.categories, category] })),
+
+  filterText: '',
+  setFilterText: (text) => set({ filterText: text }),
+  selectedCategoryId: null,
+  setSelectedCategoryId: (id) => set({ selectedCategoryId: id }),
 
   // Drawers
   drawers: [],

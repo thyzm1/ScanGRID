@@ -2,6 +2,8 @@ import type {
   Drawer,
   DrawerCreateRequest,
   BinUpdateRequest,
+  Category,
+  CategoryCreateRequest,
 } from '../types/api';
 
 const API_BASE_URL = '/api'; // Toujours utiliser /api comme préfixe, que ce soit en dev ou prod
@@ -15,14 +17,15 @@ class ApiClient {
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
-
+  
   private async request<T>(
     endpoint: string,
     options?: RequestInit
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    console.log(`📡 API Request: ${options?.method || 'GET'} ${url}`); // LOGGING AJOUTÉ
+    // console.log(`📡 API Request: ${options?.method || 'GET'} ${url}`); 
     
+    // ...existing request method...
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -39,6 +42,21 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  // ========================================================================
+  // CATEGORIES
+  // ========================================================================
+
+  async listCategories(): Promise<Category[]> {
+    return this.request('/categories');
+  }
+
+  async createCategory(data: CategoryCreateRequest): Promise<Category> {
+    return this.request('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // ========================================================================

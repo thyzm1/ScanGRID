@@ -29,6 +29,20 @@ interface GridEditor3Props {
 
 const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
 
+/* Custom Resize Handle Style */
+const resizeHandleStyle = {
+  position: 'absolute',
+  width: '20px',
+  height: '20px',
+  bottom: '0',
+  right: '0',
+  cursor: 'se-resize',
+  zIndex: 20,
+  background: 'rgba(0,0,0,0.2)',
+  borderTopLeftRadius: '100%',
+  borderBottomRightRadius: '8px', /* Matches container radius */
+} as const;
+
 export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor3Props) {
   const {
     currentDrawer,
@@ -40,6 +54,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     setSelectedBin,
     searchedBinId,
     setSearchedBinId,
+    filterText,
+    selectedCategoryId
   } = useStore();
 
   const [scale, setScale] = useState(1);
@@ -255,8 +271,27 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const currentLayer = currentDrawer.layers[currentLayerIndex];
   if (!currentLayer) return null;
   
-  const placedBins = currentLayer.bins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
-  const unplacedBins = currentLayer.bins.filter(b => b.x_grid < 0 || b.y_grid < 0);
+  const visibleBins = currentLayer.bins.filter(b => {
+      // Category Filter
+      if (selectedCategoryId && b.category_id !== selectedCategoryId) return false;
+      
+      // Text Filter
+      if (filterText) {
+          const lower = filterText.toLowerCase();
+          const matchLabel = b.content.title?.toLowerCase().includes(lower);
+          const matchDesc = b.content.description?.toLowerCase().includes(lower);
+          const matchContent = b.content.items?.some(item => {
+             const val = typeof item === 'string' ? item : (item as any).name || '';
+             return val.toLowerCase().includes(lower);
+          });
+          
+          if (!matchLabel && !matchDesc && !matchContent) return false;
+      }
+      return true;
+  });
+  
+  const placedBins = visibleBins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
+  const unplacedBins = visibleBins.filter(b => b.x_grid < 0 || b.y_grid < 0);
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
@@ -666,6 +701,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           ${isSelected || isSearched ? 'ring-4 ring-blue-500 ring-opacity-70 shadow-2xl z-10' : 'shadow-lg'}
           ${editMode === 'view' ? 'cursor-pointer' : 'cursor-move'}
           ${isDimmed ? 'opacity-20 grayscale-[50%]' : 'opacity-100'}
+          border border-white/10
         `}
         style={{
           backgroundColor: bin.color || '#3b82f6',
@@ -692,7 +728,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               {bin.content.description}
             </div>
           )}
-          {!isHeight1 && bin.content.items && bin.content.items.length > 0 && (
+          {!Custom Resize Handle (bottom-right) - Only in edit mode */}
+        {editMode === 'edit' && (
+           <span className="react-resizable-handle react-resizable-handle-se" style={resizeHandleStyle} />
+        )}
+
+        {/* isHeight1 && bin.content.items && bin.content.items.length > 0 && (
             <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate mb-6">
               {bin.content.items.length} item{bin.content.items.length > 1 ? 's' : ''}
             </div>
@@ -705,7 +746,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             </div>
           )}
         
-        {/* Edit Controls */}
+        {/* Edit Controls */}full
         {editMode === 'edit' && (
           <>
             {/* Delete - Top Right */}
@@ -1116,6 +1157,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     isDraggingRef.current = false;
                   }, 100);
                 }}
+                resizeHandles={['se']}
+                resizeHandle={
+                  <div className="react-resizable-handle react-resizable-handle-se" style={resizeHandleStyle} />
+                }
                 cols={currentDrawer.width_units}
                 rowHeight={BASE_CELL_SIZE}
                 width={GRID_WIDTH}

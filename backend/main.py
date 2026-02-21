@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database import get_db, init_db
-from models import Drawer, Layer, Bin
+from models import Drawer, Layer, Bin, Category
 from schemas import (
     DrawerCreate,
     DrawerResponse,
@@ -28,6 +28,8 @@ from schemas import (
     BinResponse,
     ErrorResponse,
     SuccessResponse,
+    CategoryCreate,
+    CategoryResponse,
 )
 
 # Configuration du logging
@@ -472,6 +474,86 @@ async def delete_bin(
     
     logger.info(f"✅ Boîte supprimée: {bin_id}")
     return SuccessResponse(message=f"Boîte {bin_id} supprimée avec succès")
+
+
+# ============= CATEGORIES =============
+
+@api_router.get(
+    "/categories",
+    response_model=List[CategoryResponse],
+    tags=["Categories"],
+    summary="Lister toutes les catégories"
+)
+async def list_categories(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Récupère la liste de toutes les catégories.
+    """
+    logger.info("📋 GET /categories - Liste des catégories")
+    
+    result = await db.execute(select(Category).order_by(Category.name))
+    categories = result.scalars().all()
+    
+    return [CategoryResponse.model_validate(c) for c in categories]
+
+
+@api_router.post(
+    "/categories",
+    response_model=CategoryResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Categories"],
+    summary="Créer une catégorie"
+)
+async def create_category(
+    category_in: CategoryCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Crée une nouvelle catégorie.
+    """
+    logger.info(f"➕ POST /categories - Nouvelle catégorie: {category_in.name}")
+    
+    new_category = Category(
+        name=category_in.name,
+        icon=category_in.icon
+    )
+    
+    db.add(new_category)
+    await db.commit()
+    await db.refresh(new_category)
+    
+    return CategoryResponse.model_validate(new_category)
+
+
+@api_router.delete(
+    "/categories/{category_id}",
+    response_model=SuccessResponse,
+    tags=["Categories"],
+    summary="Supprimer une catégorie"
+)
+async def delete_category(
+    category_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Supprime une catégorie.
+    """
+    logger.info(f"🗑️ DELETE /categories/{category_id}")
+    
+    result = await db.execute(select(Category).where(Category.id == category_id))
+    category = result.scalar_one_or_none()
+    
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Catégorie {category_id} non trouvée"
+        )
+    
+    await db.delete(category)
+    await db.commit()
+    
+    return SuccessResponse(message=f"Catégorie {category_id} supprimée avec succès")
 
 
 # Monter le routeur API sous le préfixe /api

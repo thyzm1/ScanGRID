@@ -13,6 +13,22 @@ class BinContentSchema(BaseModel):
     description: Optional[str] = Field(None, description="Description courte")
     items: Optional[List[str]] = Field(None, description="Liste des articles contenus")
     photos: Optional[List[str]] = Field(None, description="URLs des photos")
+    icon: Optional[str] = Field(None, description="Icône RemixIcon ou Emoji")
+
+
+# ============= SCHEMAS POUR CATEGORIE =============
+
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, description="Nom de la catégorie")
+    icon: Optional[str] = Field("ri-folder-line", description="Icône RemixIcon")
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryResponse(CategoryBase):
+    id: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============= SCHEMAS POUR BIN =============
@@ -25,6 +41,7 @@ class BinBase(BaseModel):
     content: BinContentSchema = Field(..., description="Contenu structuré de la boîte")
     color: Optional[str] = Field("#3b82f6", description="Couleur de la boîte (hex)")
     is_hole: Optional[bool] = Field(False, description="Si c'est un trou")
+    category_id: Optional[str] = Field(None, description="ID de la catégorie")
 
 
 class BinCreate(BinBase):
@@ -41,6 +58,7 @@ class BinUpdate(BaseModel):
     content: Optional[Dict[str, Any]] = None
     color: Optional[str] = None
     is_hole: Optional[bool] = None
+    category_id: Optional[str] = None
     layer_id: Optional[str] = Field(None, description="Déplacer vers une autre couche")
     
     model_config = ConfigDict(extra="forbid")

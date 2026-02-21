@@ -7,6 +7,17 @@
 // TYPES DE BASE
 // ============================================================================
 
+export interface Category {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
+export interface CategoryCreateRequest {
+  name: string;
+  icon?: string;
+}
+
 export interface BinContent {
   title: string;
   description?: string;
@@ -16,7 +27,7 @@ export interface BinContent {
 }
 
 export interface Bin {
-  bin_id: string;
+  bin_id: string; // Mapped from backend 'id'
   x_grid: number;
   y_grid: number;
   width_units: number;
@@ -24,7 +35,9 @@ export interface Bin {
   content: BinContent;
   color?: string;
   is_hole?: boolean;
-  layer_id?: string; // Added for moving bins
+  layer_id?: string;
+  category_id?: string; // Added
+  category?: Category; // Added
 }
 
 export interface Layer {

@@ -10,7 +10,7 @@ interface BinEditorModalProps {
 }
 
 export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalProps) {
-  const { currentDrawer, currentLayerIndex } = useStore();
+  const { currentDrawer, currentLayerIndex, categories } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<string[]>([]);
@@ -19,6 +19,8 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [newPhoto, setNewPhoto] = useState('');
   const [color, setColor] = useState('#3b82f6');
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [icon, setIcon] = useState('');
 
   useEffect(() => {
     if (bin) {
@@ -27,8 +29,22 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       setItems(bin.content.items || []);
       setPhotos(bin.content.photos || []);
       setColor(bin.color || '#3b82f6');
+      setCategoryId(bin.category_id || null);
+      // If bin.content.icon exists, use it.
+      // Note: we need to update types/api.ts to include icon in BinContent if not already there.
+      // But assuming it is or allows extra props.
+      setIcon((bin.content as any).icon || '');
+
       if (currentDrawer && currentDrawer.layers[currentLayerIndex]) {
-          setSelectedLayerId(currentDrawer.layers[currentLayerIndex].layer_id);
+          // If the bin belongs to a specific layer (from bin.layer_id), use that.
+          // Otherwise default to current layer.
+          // The modal receives 'bin', which might be from 'unplacedBins' or 'currentLayer.bins'.
+          // 'unplacedBins' don't have a layer_id usually, or it's not relevant until placed.
+          // But here we are editing an existing bin.
+          // If we are editing a bin in the dock, we might want to assign it to a layer explicitly?
+          // Or just move it.
+          // For now, respect the bin's layer if it has one, else current layer.
+          setSelectedLayerId(bin.layer_id || currentDrawer.layers[currentLayerIndex].layer_id);
       }
     }
   }, [bin, currentDrawer, currentLayerIndex]);
@@ -37,16 +53,18 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
   const handleSave = () => {
     const updatedContent: BinContent = {
-      ...bin.content, // Preserve existing fields like icon
+      ...bin.content,
       title,
       description,
       items,
       photos,
+      icon, 
     };
 
     onSave({
       ...bin,
       content: updatedContent,
+      category_id: categoryId || undefined,
       color,
       layer_id: selectedLayerId || undefined
     });
@@ -137,25 +155,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Layer Selection */}
-          {currentDrawer && (
-              <div>
-                  <label className="block text-sm font-semibold mb-2">Couche</label>
-                  <select
-                      className="input w-full"
-                      value={selectedLayerId || ''}
-                      onChange={(e) => setSelectedLayerId(e.target.value)}
-                  >
-                      {currentDrawer.layers.map((layer, idx) => (
-                          <option key={layer.layer_id} value={layer.layer_id}>
-                              Couche {idx + 1} (z-index: {layer.z_index})
-                          </option>
-                      ))}
-                  </select>
-              </div>
-          )}
-
-          {/* Title */}
+          {/* Title - First */}
           <div>
             <label className="block text-sm font-semibold mb-2">
               Titre <span className="text-red-500">*</span>
@@ -170,7 +170,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             />
           </div>
 
-          {/* Description */}
+          {/* Description - Second */}
           <div>
             <label className="block text-sm font-semibold mb-2">Description</label>
             <textarea
@@ -181,7 +181,44 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             />
           </div>
 
-          {/* Items List */}
+           {/* Category & Icon - Third */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Catégorie</label>
+              <select
+                className="input w-full"
+                value={categoryId || ''}
+                onChange={(e) => setCategoryId(e.target.value || null)}
+              >
+                <option value="">Aucune</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Icon */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Icône (RemixIcon)</label>
+              <div className="flex gap-2">
+                 <input
+                  type="text"
+                  className="input flex-1"
+                  value={icon}
+                  onChange={(e) => setIcon(e.target.value)}
+                  placeholder="ri-tools-line"
+                />
+                <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
+                    {icon ? <i className={`${icon} text-xl`} /> : <span className="text-xs text-gray-500">?</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Items List - Fourth */}
           <div>
             <label className="block text-sm font-semibold mb-2">Articles contenus</label>
             <div className="space-y-2">
@@ -227,7 +264,25 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             </div>
           </div>
 
-          {/* Photos */}
+          {/* Layer Selection - Fifth (Moved down) */}
+          {currentDrawer && (
+              <div>
+                  <label className="block text-sm font-semibold mb-2">Couche</label>
+                  <select
+                      className="input w-full"
+                      value={selectedLayerId || ''}
+                      onChange={(e) => setSelectedLayerId(e.target.value)}
+                  >
+                      {currentDrawer.layers.map((layer, idx) => (
+                          <option key={layer.layer_id} value={layer.layer_id}>
+                              Couche {idx + 1} (z-index: {layer.z_index})
+                          </option>
+                      ))}
+                  </select>
+              </div>
+          )}
+
+          {/* Photos - Sixth */}
           <div>
             <label className="block text-sm font-semibold mb-2">Photos (URLs)</label>
             <div className="space-y-3">
