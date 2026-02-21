@@ -302,14 +302,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
 
-  const getInitialScale = () => {
-    if (typeof window === 'undefined') return 1;
-    const padding = 32; // 16px on each side
-    const availableWidth = window.innerWidth - padding;
-    const scale = availableWidth / GRID_WIDTH;
-    return Math.min(Math.max(scale, 0.3), 1); // Clamp between 0.3 and 1
-  };
-
   // Convert bins to react-grid-layout format
   const layout: Layout[] = placedBins.map((bin) => ({
     i: bin.bin_id,
@@ -819,30 +811,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
-      {/* Floating Controls - Layer Selector */}
-      <div className="absolute top-30 left-1/2 -translate-x-1/2 md:top-4 md:left-4 md:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-[95vw] md:w-auto items-center md:items-start">
-        <div className="pointer-events-auto max-w-full">
-          <LayerSelector />
-        </div>
-      </div>
-
-      {/* Unplaced Dock - Right Side */}
-      <div className="absolute top-32 md:top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
-         <div className="pointer-events-auto">
-            <UnplacedDock 
-                unplacedBins={unplacedBins}
-                onBinClick={(bin) => {
-                    setSelectedBin(bin);
-                    onBinClick(bin);
-                }}
-                onBinDoubleClick={onBinDoubleClick}
-                onDragStart={setDraggedDockBin}
-            />
-         </div>
-      </div>
-
-      {/* Floating Controls - Top Right */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2 pointer-events-none">
+      {/* Floating Controls - Top Center (Mobile) / Top Right (Desktop) */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-20 flex flex-col items-center sm:items-end gap-2 pointer-events-none w-max">
         <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto transition-all">
         
         {/* Undo/Redo */}
@@ -974,6 +944,28 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
       </div>
 
+      {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 sm:top-4 sm:left-4 sm:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-max">
+        <div className="pointer-events-auto">
+          <LayerSelector />
+        </div>
+      </div>
+
+      {/* Unplaced Dock - Right Side */}
+      <div className="absolute top-36 sm:top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+         <div className="pointer-events-auto">
+            <UnplacedDock 
+                unplacedBins={unplacedBins}
+                onBinClick={(bin) => {
+                    setSelectedBin(bin);
+                    onBinClick(bin);
+                }}
+                onBinDoubleClick={onBinDoubleClick}
+                onDragStart={setDraggedDockBin}
+            />
+         </div>
+      </div>
+
       {/* Floating Stats - Bottom Right */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
         <button
@@ -1103,7 +1095,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         <div id="grid-editor-container" style={{ width: '100%', height: '100%', touchAction: 'none' }}>
           <TransformWrapper
             ref={transformWrapperRef}
-            initialScale={getInitialScale()}
+            initialScale={window.innerWidth < 768 ? (window.innerWidth - 32) / GRID_WIDTH : 1.2}
             minScale={0.1}
             maxScale={3}
             centerOnInit={true}

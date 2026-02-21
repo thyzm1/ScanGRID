@@ -155,7 +155,7 @@ function App() {
   };
 
   return (
-    <div className="h-[100dvh] w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col">
       {/* Compact Header - Only 3.5rem tall */}
       <motion.header
         initial={{ y: -100 }}
