@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Drawer, Bin, Category } from '../types/api';
 
-export type ViewMode = '2D' | '3D';
+export type ViewMode = '2D' | '3D' | 'settings';
 export type EditMode = 'view' | 'edit';
 
 interface AppState {
@@ -20,6 +20,7 @@ interface AppState {
   categories: Category[];
   setCategories: (categories: Category[]) => void;
   addCategory: (category: Category) => void;
+  removeCategory: (id: string) => void;
 
   // Search & Filter
   filterText: string;
@@ -80,6 +81,7 @@ export const useStore = create<AppState>((set) => ({
   categories: [],
   setCategories: (categories) => set({ categories }),
   addCategory: (category) => set((state) => ({ categories: [...state.categories, category] })),
+  removeCategory: (id) => set((state) => ({ categories: state.categories.filter(c => c.id !== id) })),
 
   filterText: '',
   setFilterText: (text) => set({ filterText: text }),

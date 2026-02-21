@@ -59,6 +59,12 @@ class ApiClient {
     });
   }
 
+  async deleteCategory(categoryId: string): Promise<{ message: string }> {
+    return this.request(`/categories/${categoryId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // ========================================================================
   // HEALTH CHECK
   // ========================================================================
