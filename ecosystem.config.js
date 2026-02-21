@@ -4,7 +4,7 @@ module.exports = {
       name: "scangrid-backend",
       cwd: "./backend",
       script: "venv/bin/python",
-      args: "-m uvicorn main:app --host 0.0.0.0 --port 8001 --root-path /api",
+      args: "-m uvicorn main:app --host 0.0.0.0 --port 8001",
       interpreter: "none", // On utilise le venv directement via le script
       env: {
         SCANGRID_DB_DIR: "./data"

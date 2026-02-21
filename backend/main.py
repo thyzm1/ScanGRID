@@ -53,6 +53,7 @@ app = FastAPI(
     description="API de gestion d'inventaire Gridfinity pour Raspberry Pi",
     version="1.0.0",
     lifespan=lifespan,
+    # root_path="/api" # REMOVED: C'est peut-être la source du problème si Cloudflare n'enlève pas le préfixe
 )
 
 # CORS pour permettre les requêtes depuis l'app iOS
