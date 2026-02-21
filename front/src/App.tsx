@@ -114,7 +114,13 @@ function App() {
             }
             if (layer.layer_id === targetLayerId) {
                 // Add to destination (set to Unplaced to avoid collisions)
-                const movedBin = { ...updatedBin, x_grid: -1, y_grid: -1 };
+                // We must ensure the layer_id is updated in the object itself for consistency
+                const movedBin = { 
+                    ...updatedBin, 
+                    x_grid: -1, 
+                    y_grid: -1,
+                    layer_id: targetLayerId 
+                };
                 return { ...layer, bins: [...layer.bins, movedBin] };
             }
             return layer;

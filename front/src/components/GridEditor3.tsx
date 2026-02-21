@@ -208,13 +208,18 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             existingBin.depth_units !== snappedH;
 
           if (hasChanged) {
-            // Update Backend (Auto-save)
+            console.log(`[AutoSave] Updating bin ${existingBin.bin_id} to (${snappedX},${snappedY})`);
+            // Update Backend (Auto-save) with debounce or direct call?
+            // Direct call for now, but ensure we handle errors
             apiClient.updateBin(existingBin.bin_id, {
               x_grid: snappedX,
               y_grid: snappedY,
               width_units: snappedW,
               depth_units: snappedH,
-            }).catch(console.error);
+            }).catch(err => {
+                console.error("Failed to auto-save bin position:", err);
+                alert("Erreur de sauvegarde de la position !");
+            });
           }
 
           return {
@@ -284,11 +289,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     }
 
     const tempId = uuidv4();
+    // Ensure strict 1x1 size
     const newBinData = {
       x_grid: x,
       y_grid: y,
-      width_units: 1,
-      depth_units: 1,
+      width_units: 1, // Explicit 1
+      depth_units: 1, // Explicit 1
       color: getRandomColor(),
       content: {
         title: 'Nouvelle boîte',
@@ -298,6 +304,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         photos: [],
       },
     };
+    console.log("Creating new bin with data:", newBinData);
 
     // Optimistic Update
     const optimisticBin: Bin = {
@@ -443,6 +450,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     const isSearched = searchedBinId === bin.bin_id;
     const isDimmed = searchedBinId !== null && !isSearched;
     const isHeight1 = bin.depth_units === 1;
+    const is1x1 = bin.width_units === 1 && bin.depth_units === 1;
 
     return (
       <motion.div
@@ -466,13 +474,13 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         {/* Content */}
         <div className="p-2 sm:p-3 h-full flex flex-col text-white overflow-hidden relative" style={{ backgroundColor: bin.color || '#3b82f6' }}>
             {/* Icon - visible as a watermark/background element or alongside title */}
-            {bin.content.icon && (
+            {bin.content.icon && !is1x1 && (
                <div className="absolute top-1 right-1 opacity-20 pointer-events-none">
                  <i className={`${bin.content.icon} text-4xl`}></i>
                </div>
             )}
           <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
-             {bin.content.icon && isHeight1 && <i className={`${bin.content.icon} text-lg`}></i>}
+             {bin.content.icon && isHeight1 && !is1x1 && <i className={`${bin.content.icon} text-lg`}></i>}
             {bin.content.title}
           </div>
           {!isHeight1 && bin.content.description && (
@@ -502,7 +510,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 e.stopPropagation();
                 handleDeleteBin(bin.bin_id);
               }}
-              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity z-20"
+              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full transition-opacity z-20 shadow-md transform hover:scale-110"
               title="Supprimer"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,7 +522,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 e.stopPropagation();
                 handleMoveToDock(bin.bin_id);
               }}
-              className="absolute top-1 right-6 p-1 bg-yellow-500 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity z-20"
+              className="absolute top-1 right-8 p-1 bg-yellow-500 text-white rounded-full transition-opacity z-20 shadow-md transform hover:scale-110"
               title="Déplacer vers la zone d'attente"
             >
                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
