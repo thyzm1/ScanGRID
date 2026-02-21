@@ -49,9 +49,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const [viewFormat, setViewFormat] = useState<'grid' | 'list'>('grid'); // New state for list view
 
   // --- New Feature States ---
-  const [filterText, setFilterText] = useState(''); // Search/Filter
   const [selectedBinIds, setSelectedBinIds] = useState<string[]>([]); // Multi-select
-  const [compactMode, setCompactMode] = useState(false); // Compact mode
   
   // Undo/Redo History (simple stack for current layer bins)
   const [history, setHistory] = useState<Bin[][]>([]);
@@ -257,25 +255,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const currentLayer = currentDrawer.layers[currentLayerIndex];
   if (!currentLayer) return null;
   
-  // Apply Filter (Title, Description, Items)
-  const filteredBins = currentLayer.bins.filter(b => {
-      if (!filterText) return true;
-      const lowerFilter = filterText.toLowerCase();
-      // Handle item structure (string or object with name)
-      const itemsMatch = b.content?.items?.some((i: any) => {
-          const name = typeof i === 'string' ? i : i.name || '';
-          return name.toLowerCase().includes(lowerFilter);
-      });
-      
-      return (
-          (b.content?.title || '').toLowerCase().includes(lowerFilter) ||
-          (b.content?.description || '').toLowerCase().includes(lowerFilter) ||
-          itemsMatch
-      );
-  });
-  
-  const placedBins = filteredBins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
-  const unplacedBins = filteredBins.filter(b => b.x_grid < 0 || b.y_grid < 0);
+  const placedBins = currentLayer.bins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
+  const unplacedBins = currentLayer.bins.filter(b => b.x_grid < 0 || b.y_grid < 0);
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
@@ -691,28 +672,28 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         }}
         whileHover={{ scale: editMode === 'view' && !isDimmed ? 1.02 : 1 }}
       >
-        {/* Content */}
+        {/* Render bin card */}
         <div className={`
             p-2 sm:p-3 h-full flex flex-col text-white overflow-hidden relative
-            ${compactMode ? 'p-1' : ''} 
+            
         `} style={{ backgroundColor: bin.color || '#3b82f6' }}>
             {/* Icon - visible as a watermark/background element or alongside title */}
             {bin.content.icon && !is1x1 && (
-               <div className={`absolute top-1 right-1 opacity-20 pointer-events-none ${compactMode ? 'text-2xl' : 'text-4xl'}`}>
+               <div className={`absolute top-1 right-1 opacity-20 pointer-events-none text-4xl`}>
                  <i className={`${bin.content.icon}`}></i>
                </div>
             )}
-          <div className={`font-semibold ${isHeight1 || compactMode ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
-             {bin.content.icon && (isHeight1 || (!is1x1 && compactMode)) && <i className={`${bin.content.icon} text-lg`}></i>}
+          <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
+             {bin.content.icon && isHeight1 && <i className={`${bin.content.icon} text-lg`}></i>}
             {bin.content.title}
           </div>
-          {!isHeight1 && !compactMode && bin.content.description && (
+          {!isHeight1 && bin.content.description && (
             <div className="text-[10px] sm:text-xs opacity-90 line-clamp-1 sm:line-clamp-2 mb-1 sm:mb-2 leading-tight hidden sm:block">
               {bin.content.description}
             </div>
           )}
-          {!isHeight1 && !compactMode && bin.content.items && bin.content.items.length > 0 && (
-            <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate">
+          {!isHeight1 && bin.content.items && bin.content.items.length > 0 && (
+            <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate mb-6">
               {bin.content.items.length} item{bin.content.items.length > 1 ? 's' : ''}
             </div>
           )}
@@ -723,54 +704,56 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               </svg>
             </div>
           )}
-        </div>
-
-        {/* Delete button (edit mode only) */}
+        
+        {/* Buttons at the bottom (edit mode only) */}
         {editMode === 'edit' && (
-          <>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm('Supprimer cette boîte ?')) {
-                    handleDeleteBin(bin.bin_id);
-                }
-              }}
-              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full transition-opacity z-50 shadow-md transform hover:scale-110 cursor-pointer"
-              title="Supprimer (Del)"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1 pb-1 z-50">
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 copyToClipboard(bin);
               }}
-              className="absolute bottom-1 left-1 p-1 bg-blue-500 text-white rounded-full transition-opacity z-50 shadow-md transform hover:scale-110 cursor-pointer"
+              className="p-1 bg-blue-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
               title="Copier (Ctrl+C)"
             >
                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                </svg>
             </button>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMoveToDock(bin.bin_id);
-              }}
-              className="absolute top-1 right-8 p-1 bg-yellow-500 text-white rounded-full transition-opacity z-50 shadow-md transform hover:scale-110 cursor-pointer"
-              title="Déplacer vers la zone d'attente"
-            >
-               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </button>
-          </>
+            <div className="flex gap-1">
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveToDock(bin.bin_id);
+                  }}
+                  className="p-1 bg-yellow-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
+                  title="Déplacer vers la zone d'attente"
+                >
+                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Supprimer cette boîte ?')) {
+                        handleDeleteBin(bin.bin_id);
+                    }
+                  }}
+                  className="p-1 bg-red-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
+                  title="Supprimer (Del)"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+            </div>
+          </div>
         )}
+        </div>
       </motion.div>
     );
   };
@@ -803,30 +786,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2 pointer-events-none">
         <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto transition-all">
         
-        {/* Search Input */}
-        <div className={`
-            flex items-center bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] overflow-hidden transition-all duration-300
-            ${filterText ? 'w-48' : 'w-10 hover:w-48 focus-within:w-48'}
-        `}>
-             <div className="w-10 h-8 flex items-center justify-center text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-             </div>
-             <input 
-                type="text" 
-                placeholder="Rechercher..." 
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="w-full h-8 bg-transparent border-none outline-none text-sm text-[var(--color-text)] placeholder-gray-400 pr-2"
-             />
-             {filterText && (
-                 <button onClick={() => setFilterText('')} className="pr-2 text-gray-400 hover:text-red-500">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                 </button>
-             )}
-        </div>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
         {/* Undo/Redo */}
         <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
              <button 
@@ -869,14 +828,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
-             {/* Compact Toggle */}
-             <button 
-                onClick={() => setCompactMode(!compactMode)}
-                className={`ml-1 p-1.5 rounded-md transition-all ${compactMode ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'text-gray-400 hover:text-gray-600'}`}
-                title={compactMode ? 'Mode normal' : 'Mode compact'}
-             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-             </button>
         </div>
         
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
