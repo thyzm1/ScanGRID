@@ -728,7 +728,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               {bin.content.description}
             </div>
           )}
-          {!Custom Resize Handle (bottom-right) - Only in edit mode */}
+          {/* Custom Resize Handle (bottom-right) - Only in edit mode */}
         {editMode === 'edit' && (
            <span className="react-resizable-handle react-resizable-handle-se" style={resizeHandleStyle} />
         )}
@@ -737,7 +737,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate mb-6">
               {bin.content.items.length} item{bin.content.items.length > 1 ? 's' : ''}
             </div>
-          )}
+          )*/}
+        
+        {/*
           {bin.content.photos && bin.content.photos.length > 0 && (
             <div className={`absolute ${isHeight1 ? 'top-1 right-8' : 'top-1.5 right-8 sm:top-2 sm:right-8'}`}>
               <svg className={`w-3 h-3 ${isHeight1 ? '' : 'sm:w-4 sm:h-4'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -745,8 +747,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               </svg>
             </div>
           )}
+        */}
         
-        {/* Edit Controls */}full
+        {/* Edit Controls */}
         {editMode === 'edit' && (
           <>
             {/* Delete - Top Right */}
