@@ -99,6 +99,14 @@ function App() {
       layers: updatedLayers,
     });
 
+    // Send update to API
+    const { bin_id, ...updateData } = updatedBin;
+    apiClient.updateBin(bin_id, updateData).catch((err) => {
+      console.error('Failed to update bin:', err);
+      // Optional: Revert optimistic update here if needed
+      // For now we just log the error since the user will see it on reload
+    });
+
     setSelectedBin(null); // Close after save
   };
 

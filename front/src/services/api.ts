@@ -21,6 +21,7 @@ class ApiClient {
     options?: RequestInit
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    console.log(`📡 API Request: ${options?.method || 'GET'} ${url}`); // LOGGING AJOUTÉ
     
     const response = await fetch(url, {
       ...options,

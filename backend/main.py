@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -53,29 +53,45 @@ app = FastAPI(
     description="API de gestion d'inventaire Gridfinity pour Raspberry Pi",
     version="1.0.0",
     lifespan=lifespan,
-    # root_path="/api" # REMOVED: C'est peut-être la source du problème si Cloudflare n'enlève pas le préfixe
+    # Pas de root_path, on gère le préfixe manuellement via APIRouter si besoin, 
+    # ou on laisse le proxy gérer.
+)
+
+# Création d'un routeur principal pour ajouter le préfixe /api
+api_router = FastAPI(
+    title="ScanGRID API Sub-App",
+    lifespan=lifespan,
 )
 
 # CORS pour permettre les requêtes depuis l'app iOS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En production, spécifier les origines autorisées
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # AUTORISE TOUTES LES MÉTHODES (GET, POST, PUT, DELETE, OPTIONS, PATCH)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Configuration pour servir le frontend React en production
 FRONTEND_DIST = Path(__file__).parent.parent / "front" / "dist"
+# On déplace les endpoints existants pour qu'ils soient montés. 
+# ATTENTION: Cette modification nécessite de grouper les routes, 
+# mais pour une correction rapide et sûre, on va simplement ajouter 
+# une route de redirection ou monter l'app sous /api
+
+@app.get("/api/health", tags=["Health"])
+async def health_api():
+    """Endpoint de santé (Mirror pour /api)"""
+    return {"status": "healthy"}
+
 if FRONTEND_DIST.exists():
     logger.info(f"📦 Serving frontend from {FRONTEND_DIST}")
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
 
-# ============= API ROUTER =============
-api_router = APIRouter(prefix="/api")
+# ============= ENDPOINTS =============
 
-@api_router.get("/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 async def health():
     """Endpoint de santé pour vérifier que le serveur est actif"""
     return {
@@ -85,7 +101,7 @@ async def health():
     }
 
 
-@api_router.post(
+@app.post(
     "/drawers",
     response_model=DrawerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -157,7 +173,7 @@ async def create_or_replace_drawer(
         )
 
 
-@api_router.get(
+@app.get(
     "/drawers/{drawer_id}",
     response_model=DrawerResponse,
     tags=["Drawers"],
@@ -191,7 +207,7 @@ async def get_drawer(
     return DrawerResponse.model_validate(drawer)
 
 
-@api_router.get(
+@app.get(
     "/drawers",
     response_model=List[DrawerResponse],
     tags=["Drawers"],
@@ -215,7 +231,7 @@ async def list_drawers(
     return [DrawerResponse.model_validate(d) for d in drawers]
 
 
-@api_router.delete(
+@app.delete(
     "/drawers/{drawer_id}",
     response_model=SuccessResponse,
     tags=["Drawers"],
@@ -248,7 +264,7 @@ async def delete_drawer(
     return SuccessResponse(message=f"Tiroir {drawer_id} supprimé avec succès")
 
 
-@api_router.patch(
+@app.patch(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -288,7 +304,7 @@ async def update_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@api_router.get(
+@app.get(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -318,7 +334,7 @@ async def get_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@api_router.post(
+@app.post(
     "/drawers/{drawer_id}/layers",
     response_model=LayerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -359,7 +375,7 @@ async def create_layer(
     return LayerResponse.model_validate(layer)
 
 
-@api_router.post(
+@app.post(
     "/layers/{layer_id}/bins",
     response_model=BinResponse,
     status_code=status.HTTP_201_CREATED,
@@ -406,7 +422,7 @@ async def create_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@api_router.delete(
+@app.delete(
     "/bins/{bin_id}",
     response_model=SuccessResponse,
     tags=["Bins"],
@@ -438,8 +454,6 @@ async def delete_bin(
     logger.info(f"✅ Boîte supprimée: {bin_id}")
     return SuccessResponse(message=f"Boîte {bin_id} supprimée avec succès")
 
-# Include the router
-app.include_router(api_router)
 
 
 # ============= FRONTEND SPA CATCH-ALL =============
