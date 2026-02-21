@@ -81,7 +81,12 @@ function App() {
   };
 
   const handleSaveBin = (updatedBin: Bin) => {
-    if (!currentDrawer) return;
+    console.log('handleSaveBin called with:', updatedBin); // DEBUG LOG
+
+    if (!currentDrawer) {
+      console.error('No current drawer!');
+      return;
+    }
 
     const updatedLayers = currentDrawer.layers.map((layer, idx) =>
       idx === currentLayerIndex
@@ -101,11 +106,15 @@ function App() {
 
     // Send update to API
     const { bin_id, ...updateData } = updatedBin;
-    apiClient.updateBin(bin_id, updateData).catch((err) => {
-      console.error('Failed to update bin:', err);
-      // Optional: Revert optimistic update here if needed
-      // For now we just log the error since the user will see it on reload
-    });
+    console.log('Sending API update for bin:', bin_id, updateData); // DEBUG LOG
+    
+    apiClient.updateBin(bin_id, updateData)
+      .then((res) => console.log('API update success:', res))
+      .catch((err) => {
+        console.error('Failed to update bin API:', err);
+        // Optional: Revert optimistic update here if needed
+        // For now we just log the error since the user will see it on reload
+      });
 
     setSelectedBin(null); // Close after save
   };
