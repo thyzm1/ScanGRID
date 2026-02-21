@@ -29,20 +29,6 @@ interface GridEditor3Props {
 
 const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
 
-/* Custom Resize Handle Style */
-const resizeHandleStyle = {
-  position: 'absolute',
-  width: '20px',
-  height: '20px',
-  bottom: '0',
-  right: '0',
-  cursor: 'se-resize',
-  zIndex: 20,
-  background: 'rgba(0,0,0,0.2)',
-  borderTopLeftRadius: '100%',
-  borderBottomRightRadius: '8px', /* Matches container radius */
-} as const;
-
 export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor3Props) {
   const {
     currentDrawer,
@@ -70,6 +56,26 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   // Undo/Redo History (simple stack for current layer bins)
   const [history, setHistory] = useState<Bin[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Prevent native browser pinch-to-zoom on the grid container
+  useEffect(() => {
+    const preventPinchZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+    
+    const container = document.getElementById('grid-editor-container');
+    if (container) {
+      container.addEventListener('wheel', preventPinchZoom, { passive: false });
+    }
+    
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', preventPinchZoom);
+      }
+    };
+  }, []);
   
   // Clipboard (use localStorage for persistence across reloads/layer switches)
   const copyToClipboard = (bin: Bin) => {
@@ -728,10 +734,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               {bin.content.description}
             </div>
           )}
-          {/* Custom Resize Handle (bottom-right) - Only in edit mode */}
-        {editMode === 'edit' && (
-           <span className="react-resizable-handle react-resizable-handle-se" style={resizeHandleStyle} />
-        )}
 
         {/* isHeight1 && bin.content.items && bin.content.items.length > 0 && (
             <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate mb-6">
@@ -1090,7 +1092,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
              </div>
            </div>
         ) : (
-        <div style={{ width: '100%', height: '100%' }}>
+        <div id="grid-editor-container" style={{ width: '100%', height: '100%', touchAction: 'none' }}>
           <TransformWrapper
             ref={transformWrapperRef}
             initialScale={1.2}
@@ -1100,7 +1102,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             centerZoomedOut={true}
             limitToBounds={false}
             alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
-            wheel={{ step: 0.1, disabled: false, activationKeys: ["Control", "Meta", "Shift"] }}
+            wheel={{ step: 0.1, disabled: false }}
             pinch={{ step: 5 }}
             panning={{
               disabled: false,
@@ -1161,9 +1163,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   }, 100);
                 }}
                 resizeHandles={['se']}
-                resizeHandle={
-                  <div className="react-resizable-handle react-resizable-handle-se" style={resizeHandleStyle} />
-                }
                 cols={currentDrawer.width_units}
                 rowHeight={BASE_CELL_SIZE}
                 width={GRID_WIDTH}
