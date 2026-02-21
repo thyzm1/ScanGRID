@@ -52,14 +52,13 @@ fi
 
 # Migration de la base de données
 echo "🗄️  Migration de la base de données..."
-export SCANGRID_DB_DIR=/var/lib/scangrid
-python3 migrate_categories.py
+cd backend
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_categories.py
 if [ $? -eq 0 ]; then
     echo "✅ Migration réussie"
 else
     echo "⚠️  Attention : La migration a peut-être échoué (ou déjà faite)"
 fi
-
 cd ..
 
 # 4. Redémarrage PM2
