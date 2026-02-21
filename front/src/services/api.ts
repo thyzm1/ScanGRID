@@ -4,9 +4,7 @@ import type {
   BinUpdateRequest,
 } from '../types/api';
 
-const API_BASE_URL = import.meta.env.PROD
-  ? '' // En production, même origine (servi par FastAPI)
-  : '/api'; // En dev, proxy Vite vers :8001
+const API_BASE_URL = '/api'; // Toujours utiliser /api comme préfixe, que ce soit en dev ou prod
 
 /**
  * Client API REST pour ScanGRID Backend
