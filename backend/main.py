@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -53,24 +53,26 @@ app = FastAPI(
     description="API de gestion d'inventaire Gridfinity pour Raspberry Pi",
     version="1.0.0",
     lifespan=lifespan,
-    # Pas de root_path, on gère le préfixe manuellement via APIRouter si besoin, 
-    # ou on laisse le proxy gérer.
+    # root_path="/api" # REMOVED: C'est peut-être la source du problème si Cloudflare n'enlève pas le préfixe
 )
 
-# Création d'un routeur principal pour ajouter le préfixe /api
-api_router = FastAPI(
-    title="ScanGRID API Sub-App",
-    lifespan=lifespan,
-)
-
-# CORS pour permettre les requêtes depuis l'app iOS
+# CORS mis en PREMIER, avant le montage du routeur
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
+    expose_headers=["*"]
 )
+
+# Création d'un routeur principal pour ajouter le préfixe /api
+api_router = APIRouter()
+# Les endpoints sont ajoutés à ce routeur, qui est ensuite monté
+# avec le préfixe "/api" dans l'app principale. 
+# Si Cloudflare conserve le préfixe lors de la requête vers le backend,
+# cette structure est essentielle.
+
 
 # Configuration pour servir le frontend React en production
 FRONTEND_DIST = Path(__file__).parent.parent / "front" / "dist"
