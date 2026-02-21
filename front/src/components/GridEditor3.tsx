@@ -719,7 +719,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                              <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setBinToDelete(bin);
+                                  if (window.confirm('Supprimer cette boîte ?')) {
+                                    handleDeleteBin(bin.bin_id);
+                                  }
                                 }}
                                 className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                 title="Supprimer"
