@@ -52,7 +52,6 @@ fi
 
 # Migration de la base de données
 echo "🗄️  Migration de la base de données..."
-cd backend
 env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_categories.py
 if [ $? -eq 0 ]; then
     echo "✅ Migration réussie"
