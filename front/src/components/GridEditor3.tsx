@@ -698,30 +698,50 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             </div>
           )}
           {bin.content.photos && bin.content.photos.length > 0 && (
-            <div className={`absolute ${isHeight1 ? 'top-1 right-1' : 'top-1.5 right-1.5 sm:top-2 sm:right-2'}`}>
+            <div className={`absolute ${isHeight1 ? 'top-1 right-8' : 'top-1.5 right-8 sm:top-2 sm:right-8'}`}>
               <svg className={`w-3 h-3 ${isHeight1 ? '' : 'sm:w-4 sm:h-4'}`} fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
               </svg>
             </div>
           )}
         
-        {/* Buttons at the bottom (edit mode only) */}
+        {/* Edit Controls */}
         {editMode === 'edit' && (
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1 pb-1 z-50">
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                copyToClipboard(bin);
-              }}
-              className="p-1 bg-blue-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
-              title="Copier (Ctrl+C)"
-            >
-               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-               </svg>
-            </button>
-            <div className="flex gap-1">
+          <>
+            {/* Delete - Top Right */}
+            <div className="absolute top-0 right-0 p-1 z-50">
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Supprimer cette boîte ?')) {
+                        handleDeleteBin(bin.bin_id);
+                    }
+                  }}
+                  className="p-1 bg-red-500 text-white rounded-bl-lg rounded-tr-sm shadow-md hover:bg-red-600 transition-colors cursor-pointer"
+                  title="Supprimer (Del)"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+            </div>
+
+            {/* Copy & Dock - Bottom Left */}
+            <div className="absolute bottom-0 left-0 flex gap-1 p-1 z-50">
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(bin);
+                  }}
+                  className="p-1 bg-blue-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
+                  title="Copier (Ctrl+C)"
+                >
+                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                   </svg>
+                </button>
                 <button
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
@@ -735,23 +755,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </button>
-                <button
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm('Supprimer cette boîte ?')) {
-                        handleDeleteBin(bin.bin_id);
-                    }
-                  }}
-                  className="p-1 bg-red-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
-                  title="Supprimer (Del)"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
             </div>
-          </div>
+          </>
         )}
         </div>
       </motion.div>
@@ -1051,11 +1056,13 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             centerZoomedOut={true}
             limitToBounds={false}
             alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
-            wheel={{ step: 0.1 }}
+            wheel={{ step: 0.1, disabled: true }}
             pinch={{ step: 5 }}
             panning={{
-              disabled: editMode === 'edit', // Only pan in view mode
+              disabled: false,
+              excluded: editMode === 'edit' ? ['layout', 'react-grid-item', 'react-resizable-handle'] : [],
               velocityDisabled: false,
+              wheelPanning: true,
             }}
             onTransformed={(ref) => {
               setScale(ref.state.scale);
