@@ -31,6 +31,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
   const handleSave = () => {
     const updatedContent: BinContent = {
+      ...bin.content, // Preserve existing fields like icon
       title,
       description,
       items,
