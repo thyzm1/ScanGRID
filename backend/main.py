@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -61,7 +61,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # En production, spécifier les origines autorisées
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"],  # AUTORISE TOUTES LES MÉTHODES (GET, POST, PUT, DELETE, OPTIONS, PATCH)
     allow_headers=["*"],
 )
 
@@ -72,9 +72,10 @@ if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
 
-# ============= ENDPOINTS =============
+# ============= API ROUTER =============
+api_router = APIRouter(prefix="/api")
 
-@app.get("/health", tags=["Health"])
+@api_router.get("/health", tags=["Health"])
 async def health():
     """Endpoint de santé pour vérifier que le serveur est actif"""
     return {
@@ -84,7 +85,7 @@ async def health():
     }
 
 
-@app.post(
+@api_router.post(
     "/drawers",
     response_model=DrawerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -156,7 +157,7 @@ async def create_or_replace_drawer(
         )
 
 
-@app.get(
+@api_router.get(
     "/drawers/{drawer_id}",
     response_model=DrawerResponse,
     tags=["Drawers"],
@@ -190,7 +191,7 @@ async def get_drawer(
     return DrawerResponse.model_validate(drawer)
 
 
-@app.get(
+@api_router.get(
     "/drawers",
     response_model=List[DrawerResponse],
     tags=["Drawers"],
@@ -214,7 +215,7 @@ async def list_drawers(
     return [DrawerResponse.model_validate(d) for d in drawers]
 
 
-@app.delete(
+@api_router.delete(
     "/drawers/{drawer_id}",
     response_model=SuccessResponse,
     tags=["Drawers"],
@@ -247,7 +248,7 @@ async def delete_drawer(
     return SuccessResponse(message=f"Tiroir {drawer_id} supprimé avec succès")
 
 
-@app.patch(
+@api_router.patch(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -287,7 +288,7 @@ async def update_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.get(
+@api_router.get(
     "/bins/{bin_id}",
     response_model=BinResponse,
     tags=["Bins"],
@@ -317,7 +318,7 @@ async def get_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.post(
+@api_router.post(
     "/drawers/{drawer_id}/layers",
     response_model=LayerResponse,
     status_code=status.HTTP_201_CREATED,
@@ -358,7 +359,7 @@ async def create_layer(
     return LayerResponse.model_validate(layer)
 
 
-@app.post(
+@api_router.post(
     "/layers/{layer_id}/bins",
     response_model=BinResponse,
     status_code=status.HTTP_201_CREATED,
@@ -405,7 +406,7 @@ async def create_bin(
     return BinResponse.model_validate(bin_obj)
 
 
-@app.delete(
+@api_router.delete(
     "/bins/{bin_id}",
     response_model=SuccessResponse,
     tags=["Bins"],
@@ -437,6 +438,8 @@ async def delete_bin(
     logger.info(f"✅ Boîte supprimée: {bin_id}")
     return SuccessResponse(message=f"Boîte {bin_id} supprimée avec succès")
 
+# Include the router
+app.include_router(api_router)
 
 
 # ============= FRONTEND SPA CATCH-ALL =============
