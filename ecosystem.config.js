@@ -3,8 +3,8 @@ module.exports = {
     {
       name: "scangrid-backend",
       cwd: "./backend",
-      script: "venv/bin/uvicorn",
-      args: "main:app --host 127.0.0.1 --port 8001 --root-path /api",
+      script: "venv/bin/python",
+      args: "-m uvicorn main:app --host 0.0.0.0 --port 8001",
       interpreter: "none", // On utilise le venv directement via le script
       env: {
         SCANGRID_DB_DIR: "./data"
@@ -14,9 +14,11 @@ module.exports = {
       name: "scangrid-frontend",
       cwd: "./front",
       script: "serve",
-      args: "-s dist -l 5173", // On sert le dossier "dist" sur le port 5173
       env: {
-        NODE_ENV: "production"
+        PM2_SERVE_PATH: './dist',
+        PM2_SERVE_PORT: 5173,
+        PM2_SERVE_SPA: 'true',
+        PM2_SERVE_HOMEPAGE: '/index.html'
       }
     }
   ]
