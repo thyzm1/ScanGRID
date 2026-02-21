@@ -43,9 +43,12 @@
 html,
 body,
 #root {
-  height: 100%;
+  height: 100dvh;
+  width: 100vw;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  position: fixed;
 }
 
 body {

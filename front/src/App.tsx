@@ -156,13 +156,13 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col">
       {/* Compact Header - Only 3.5rem tall */}
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100 }}
-        className="h-14 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-xl flex items-center justify-between px-4 relative z-20 shadow-sm"
+        className="h-14 shrink-0 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-xl flex items-center justify-between px-4 relative z-20 shadow-sm"
       >
         <div className="flex items-center gap-3">
           {/* Menu Toggle (Icon Only) */}
@@ -269,7 +269,7 @@ function App() {
       </motion.header>
 
       {/* Main Content - Full Height minus compact header */}
-      <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar Overlay (Glassmorphism) */}
         <AnimatePresence>
           {sidebarOpen && (

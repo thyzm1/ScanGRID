@@ -10,7 +10,40 @@ interface SearchResult {
   layerIndex: number;
   bin?: Bin;
   type: 'drawer' | 'bin';
+  matchContext?: {
+    field: 'title' | 'description' | 'item';
+    text: string;
+  };
 }
+
+const highlightText = (text: string | undefined, query: string) => {
+  if (!text || !query.trim()) return text;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const index = lowerText.indexOf(lowerQuery);
+  if (index === -1) return text;
+
+  // Extract a snippet around the match
+  const start = Math.max(0, index - 40);
+  const end = Math.min(text.length, index + query.length + 40);
+  let snippet = text.substring(start, end);
+  if (start > 0) snippet = '...' + snippet;
+  if (end < text.length) snippet = snippet + '...';
+
+  // Highlight the query within the snippet
+  const parts = snippet.split(new RegExp(`(${query})`, 'gi'));
+  return (
+    <span>
+      {parts.map((part, i) => 
+        part.toLowerCase() === lowerQuery ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-yellow-100 rounded px-0.5 font-medium">{part}</mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </span>
+  );
+};
 
 export default function SearchBar() {
   const { 
@@ -71,18 +104,33 @@ export default function SearchBar() {
           // 2. Check Text
           const matchLabel = bin.content.title?.toLowerCase().includes(lowerQuery);
           const matchDesc = bin.content.description?.toLowerCase().includes(lowerQuery);
-          const matchContent = bin.content.items?.some(item => 
+          const matchedItem = bin.content.items?.find(item => 
              typeof item === 'string' 
              ? item.toLowerCase().includes(lowerQuery) 
              : (item as any).name?.toLowerCase().includes(lowerQuery)
           );
 
-          if (query.trim() === '' || matchLabel || matchDesc || matchContent) {
+          if (query.trim() === '' || matchLabel || matchDesc || matchedItem) {
+            let matchContext;
+            if (query.trim() !== '') {
+              if (matchLabel) {
+                matchContext = { field: 'title' as const, text: bin.content.title };
+              } else if (matchDesc) {
+                matchContext = { field: 'description' as const, text: bin.content.description! };
+              } else if (matchedItem) {
+                matchContext = { 
+                  field: 'item' as const, 
+                  text: typeof matchedItem === 'string' ? matchedItem : (matchedItem as any).name 
+                };
+              }
+            }
+
             searchResults.push({
               drawer,
               layerIndex,
               bin,
               type: 'bin',
+              matchContext,
             });
           }
         });
@@ -213,16 +261,24 @@ export default function SearchBar() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-[var(--color-text)] group-hover:text-blue-500 transition-colors truncate">
-                              {result.type === 'drawer' ? result.drawer.name : result.bin?.content.title}
+                              {result.type === 'drawer' 
+                                ? highlightText(result.drawer.name, query) 
+                                : highlightText(result.bin?.content.title, query)}
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                            {result.matchContext && result.matchContext.field !== 'title' && (
+                              <div className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5 italic">
+                                {result.matchContext.field === 'description' ? 'Description: ' : 'Article: '}
+                                {highlightText(result.matchContext.text, query)}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-1">
                               <span>{result.drawer.name}</span>
                               <span>•</span>
                               <span>Couche {result.layerIndex + 1}</span>
                               {result.type === 'bin' && result.bin && (
                                   <>
                                   <span>•</span>
-                                  <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                                  <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-800 px-1 rounded">
                                       x:{result.bin.x_grid}, y:{result.bin.y_grid}
                                   </span>
                                   </>
