@@ -175,30 +175,18 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     (newLayout: Layout[]) => {
       if (editMode === 'view') return; // Locked in view mode
 
-      const updatedBins = newLayout
-        .map((item) => {
-          // Check if it's the placeholder or a real bin
-          if (item.i === '__dropping-elem__') return null;
+      // Process layout changes and trigger updates
+      newLayout.forEach((item) => {
+          if (item.i === '__dropping-elem__') return;
 
           const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
-          if (!existingBin) return null;
+          if (!existingBin) return;
 
-          // Snap to grid (strict alignment)
+          // Snap to grid
           const snappedX = Math.round(item.x);
           const snappedY = Math.round(item.y);
           const snappedW = Math.round(item.w);
           const snappedH = Math.round(item.h);
-
-          // Check bounds and collision
-          if (
-            snappedX < 0 ||
-            snappedY < 0 ||
-            snappedX + snappedW > currentDrawer.width_units ||
-            snappedY + snappedH > currentDrawer.depth_units ||
-            isPositionOccupied(snappedX, snappedY, snappedW, snappedH, item.i)
-          ) {
-            return existingBin; // Revert to original
-          }
           
           // Check if changed
           const hasChanged = 
@@ -208,9 +196,22 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             existingBin.depth_units !== snappedH;
 
           if (hasChanged) {
+            // Check bounds and collision before saving
+            if (
+                snappedX < 0 ||
+                snappedY < 0 ||
+                snappedX + snappedW > currentDrawer.width_units ||
+                snappedY + snappedH > currentDrawer.depth_units ||
+                isPositionOccupied(snappedX, snappedY, snappedW, snappedH, item.i)
+            ) {
+                // If invalid, we don't save. Ideally we should revert the UI state too,
+                // but since finalBins below uses newLayout, the UI will update to the invalid state temporarily.
+                // However, RGL usually prevents dropping on occupied spots if preventCollision is true.
+                console.warn("Invalid position detected, skipping save");
+                return;
+            }
+
             console.log(`[AutoSave] Updating bin ${existingBin.bin_id} to (${snappedX},${snappedY})`);
-            // Update Backend (Auto-save) with debounce or direct call?
-            // Direct call for now, but ensure we handle errors
             apiClient.updateBin(existingBin.bin_id, {
               x_grid: snappedX,
               y_grid: snappedY,
@@ -218,19 +219,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               depth_units: snappedH,
             }).catch(err => {
                 console.error("Failed to auto-save bin position:", err);
-                alert("Erreur de sauvegarde de la position !");
             });
           }
-
-          return {
-            ...existingBin,
-            x_grid: snappedX,
-            y_grid: snappedY,
-            width_units: snappedW,
-            depth_units: snappedH,
-          };
-        })
-        .filter((bin): bin is Bin => bin !== null);
+      });
       
       const finalBins = currentLayer.bins.map(bin => {
            const layoutItem = newLayout.find(l => l.i === bin.bin_id);

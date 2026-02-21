@@ -1,4 +1,3 @@
-import React from 'react';
 import { Bin } from '../types/api';
 import { useStore } from '../store/useStore';
 
