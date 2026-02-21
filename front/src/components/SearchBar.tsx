@@ -224,11 +224,11 @@ export default function SearchBar() {
                    />
                    
                    <select 
-                     className="bg-[var(--color-bg-secondary)] text-[var(--color-text)] text-sm rounded-md border border-[var(--color-border)] px-2 py-1 outline-none h-8"
+                     className="bg-[var(--color-bg-secondary)] text-[var(--color-text)] text-sm rounded-md border border-[var(--color-border)] px-2 py-1 outline-none h-8 max-w-[100px] sm:max-w-none"
                      value={selectedCategoryId || ''}
                      onChange={(e) => setSelectedCategoryId(e.target.value || null)}
                    >
-                     <option value="">Toutes catégories</option>
+                     <option value="">Toutes cat.</option>
                      {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                      ))}

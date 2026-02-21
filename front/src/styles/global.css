@@ -49,6 +49,7 @@ body,
   padding: 0;
   overflow: hidden;
   position: fixed;
+  background-color: var(--color-bg);
 }
 
 body {

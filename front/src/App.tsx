@@ -5,7 +5,6 @@ import DrawerList from './components/DrawerList';
 import GridEditor3 from './components/GridEditor3';
 import Viewer3D from './components/Viewer3D';
 import { Settings } from './components/Settings';
-import ThemeToggle from './components/ThemeToggle';
 import SearchBar from './components/SearchBar';
 import BinEditorModal from './components/BinEditorModal';
 import { apiClient } from './services/api';
@@ -156,7 +155,7 @@ function App() {
   };
 
   return (
-    <div className="h-[100dvh] w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Compact Header - Only 3.5rem tall */}
       <motion.header
         initial={{ y: -100 }}
@@ -263,8 +262,6 @@ function App() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
-
-          <ThemeToggle />
         </div>
       </motion.header>
 

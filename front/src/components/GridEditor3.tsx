@@ -302,6 +302,14 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
 
+  const getInitialScale = () => {
+    if (typeof window === 'undefined') return 1;
+    const padding = 32; // 16px on each side
+    const availableWidth = window.innerWidth - padding;
+    const scale = availableWidth / GRID_WIDTH;
+    return Math.min(Math.max(scale, 0.3), 1); // Clamp between 0.3 and 1
+  };
+
   // Convert bins to react-grid-layout format
   const layout: Layout[] = placedBins.map((bin) => ({
     i: bin.bin_id,
@@ -811,15 +819,15 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
-      {/* Floating Controls - Top Left */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
-        <div className="pointer-events-auto">
+      {/* Floating Controls - Layer Selector */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 md:top-4 md:left-4 md:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-[95vw] md:w-auto items-center md:items-start">
+        <div className="pointer-events-auto max-w-full">
           <LayerSelector />
         </div>
       </div>
 
       {/* Unplaced Dock - Right Side */}
-      <div className="absolute top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+      <div className="absolute top-32 md:top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
          <div className="pointer-events-auto">
             <UnplacedDock 
                 unplacedBins={unplacedBins}
@@ -1095,8 +1103,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         <div id="grid-editor-container" style={{ width: '100%', height: '100%', touchAction: 'none' }}>
           <TransformWrapper
             ref={transformWrapperRef}
-            initialScale={1.2}
-            minScale={0.3}
+            initialScale={getInitialScale()}
+            minScale={0.1}
             maxScale={3}
             centerOnInit={true}
             centerZoomedOut={true}
