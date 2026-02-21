@@ -46,6 +46,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const transformWrapperRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
   const [draggedDockBin, setDraggedDockBin] = useState<Bin | null>(null);
+  const [viewFormat, setViewFormat] = useState<'grid' | 'list'>('grid'); // New state for list view
 
   // Center grid logic
   useEffect(() => {
@@ -497,11 +498,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         {editMode === 'edit' && (
           <>
             <button
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeleteBin(bin.bin_id);
               }}
-              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full transition-opacity z-20 shadow-md transform hover:scale-110"
+              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full transition-opacity z-50 shadow-md transform hover:scale-110 cursor-pointer"
               title="Supprimer"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -509,11 +511,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               </svg>
             </button>
             <button
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 handleMoveToDock(bin.bin_id);
               }}
-              className="absolute top-1 right-8 p-1 bg-yellow-500 text-white rounded-full transition-opacity z-20 shadow-md transform hover:scale-110"
+              className="absolute top-1 right-8 p-1 bg-yellow-500 text-white rounded-full transition-opacity z-50 shadow-md transform hover:scale-110 cursor-pointer"
               title="Déplacer vers la zone d'attente"
             >
                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -552,6 +555,31 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
       {/* Floating Controls - Top Right */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)]">
+        
+        {/* Toggle Grid/List */}
+        <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
+            <button
+                onClick={() => setViewFormat('grid')}
+                className={`p-1.5 rounded-md transition-all ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                title="Vue Grille"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+            </button>
+            <button
+                onClick={() => setViewFormat('list')}
+                className={`p-1.5 rounded-md transition-all ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                title="Vue Liste"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+        
+        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
         <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1">
           <button
             onClick={() => setEditMode('view')}
@@ -619,6 +647,104 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           setSearchedBinId(null);
         }}
       >
+        {viewFormat === 'list' ? (
+           <div className="w-full h-full overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
+             <div className="max-w-5xl mx-auto">
+               <div className="flex items-center justify-between mb-6">
+                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Liste des Boîtes - {currentLayer.layer_id}</h2>
+                 <span className="text-sm text-gray-500">{placedBins.length} éléments</span>
+               </div>
+               
+               <div className="grid gap-4">
+                 {placedBins.length === 0 ? (
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700">
+                        <p className="text-gray-500 dark:text-gray-400 text-lg">Aucune boîte dans cette couche.</p>
+                        <p className="text-sm text-gray-400 mt-2">Basculez en mode Grille pour ajouter des éléments.</p>
+                    </div>
+                 ) : (
+                    placedBins.map((bin) => (
+                      <div 
+                        key={bin.bin_id}
+                        className={`
+                          group relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 
+                          hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer
+                          ${selectedBin?.bin_id === bin.bin_id ? 'ring-2 ring-indigo-500 border-transparent' : ''}
+                        `}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBin(bin);
+                        }}
+                      >
+                        <div className="flex items-start gap-4">
+                          {/* Icon / Color */}
+                          <div 
+                            className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shadow-inner shrink-0"
+                            style={{ backgroundColor: bin.color || '#e2e8f0' }}
+                          >
+                            <span>{bin.content?.icon || '📦'}</span>
+                          </div>
+                          
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                             <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                  {bin.content?.title || 'Sans titre'}
+                                </h3>
+                                <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                  {bin.width_units}x{bin.depth_units} • ({bin.x_grid}, {bin.y_grid})
+                                </span>
+                             </div>
+                             
+                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                               {bin.content?.description || 'Aucune description'}
+                             </p>
+                             
+                             {/* Tags / Items preview */}
+                             {(bin.content?.items && bin.content.items.length > 0) && (
+                               <div className="mt-3 flex flex-wrap gap-2">
+                                  {bin.content.items.slice(0, 3).map((item: any, idx: number) => (
+                                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                      {item.name || item}
+                                    </span>
+                                  ))}
+                                  {bin.content.items.length > 3 && (
+                                    <span className="text-xs text-gray-400 flex items-center">+{bin.content.items.length - 3} autres</span>
+                                  )}
+                               </div>
+                             )}
+                          </div>
+                          
+                          {/* Actions */}
+                          <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setBinToDelete(bin);
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Supprimer"
+                             >
+                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                             </button>
+                             <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBin(bin);
+                                }}
+                                className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                             >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                             </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                 )}
+               </div>
+             </div>
+           </div>
+        ) : (
         <div style={{ width: '100%', height: '100%' }}>
           <TransformWrapper
             ref={transformWrapperRef}
@@ -726,6 +852,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             )}
         </TransformWrapper>
         </div>
+        )}
       </div>
     </div>
   );

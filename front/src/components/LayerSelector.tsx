@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { apiClient } from '../services/api';
 
@@ -104,77 +104,79 @@ const LayerSelector = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 bg-[var(--color-bg-secondary)]/50 rounded-lg backdrop-blur-sm pointer-events-auto">
-      {/* Layer Tabs */}
-      <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-        {currentDrawer.layers.map((layer, idx) => (
-          <motion.button
-            key={layer.layer_id}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setCurrentLayerIndex(idx)}
-            className={`
-              px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all
-              ${
-                idx === currentLayerIndex
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                  : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:border-[var(--color-text-secondary)]'
-              }
-            `}
-          >
-            Couche {idx}
-            <span className="ml-1.5 opacity-70">
-              ({layer.bins.length})
-            </span>
-          </motion.button>
-        ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl pointer-events-auto transition-all hover:scale-[1.02]">
+        
+        {/* Layer Tabs Container */}
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[200px] sm:max-w-none px-1">
+          <AnimatePresence mode='popLayout'>
+          {currentDrawer.layers.map((layer, idx) => {
+             const isActive = idx === currentLayerIndex;
+             return (
+              <motion.button
+                key={layer.layer_id}
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={() => setCurrentLayerIndex(idx)}
+                className={`
+                  relative px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2
+                  ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }
+                `}
+              > 
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-white/20 text-[10px]">
+                  {idx + 1}
+                </span>
+                <span className={`${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                  Couche
+                </span>
+                {layer.bins.length > 0 && (
+                   <span className={`text-[10px] px-1 rounded-full ${isActive ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-800'} ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                     {layer.bins.length}
+                   </span>
+                )}
+              </motion.button>
+            )
+          })}
+          </AnimatePresence>
+        </div>
+
+        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1">
+            <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleAddLayer}
+                className="p-1.5 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors"
+                title="Ajouter une couche"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+            </motion.button>
+
+            {currentDrawer.layers.length > 1 && (
+                <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleDeleteLayer}
+                className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
+                title="Supprimer la couche"
+                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                </motion.button>
+            )}
+        </div>
       </div>
-
-      {/* Add Layer Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleAddLayer}
-        className="px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap bg-green-500 text-white hover:bg-green-600 transition-colors shadow-md"
-        title="Ajouter une couche"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-      </motion.button>
-
-      {/* Delete Layer Button */}
-      {currentDrawer.layers.length > 1 && (
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleDeleteLayer}
-          className="px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap bg-red-500 text-white hover:bg-red-600 transition-colors shadow-md"
-          title="Supprimer la couche actuelle"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </motion.button>
-      )}
     </div>
   );
 };
