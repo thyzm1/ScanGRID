@@ -49,6 +49,17 @@ else
     echo "❌ Erreur de syntaxe dans le Backend !"
     exit 1
 fi
+
+# Migration de la base de données
+echo "🗄️  Migration de la base de données..."
+export SCANGRID_DB_DIR=/var/lib/scangrid
+python3 migrate_categories.py
+if [ $? -eq 0 ]; then
+    echo "✅ Migration réussie"
+else
+    echo "⚠️  Attention : La migration a peut-être échoué (ou déjà faite)"
+fi
+
 cd ..
 
 # 4. Redémarrage PM2
