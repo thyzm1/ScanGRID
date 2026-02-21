@@ -820,7 +820,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Layer Selector */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 md:top-4 md:left-4 md:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-[95vw] md:w-auto items-center md:items-start">
+      <div className="absolute top-30 left-1/2 -translate-x-1/2 md:top-4 md:left-4 md:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-[95vw] md:w-auto items-center md:items-start">
         <div className="pointer-events-auto max-w-full">
           <LayerSelector />
         </div>

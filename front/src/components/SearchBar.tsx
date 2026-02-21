@@ -228,7 +228,7 @@ export default function SearchBar() {
                      value={selectedCategoryId || ''}
                      onChange={(e) => setSelectedCategoryId(e.target.value || null)}
                    >
-                     <option value="">Toutes cat.</option>
+                     <option value="">Catégories</option>
                      {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                      ))}
