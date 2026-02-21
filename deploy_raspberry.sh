@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_DIR="$HOME/ScanGRID"
+# Détermine le dossier où se trouve le script (votre dossier projet actuel)
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BRANCH="main"
 
 echo "🚀 Starting ScanGRID deployment on Raspberry Pi..."
+echo "📂 Project Directory: $PROJECT_DIR"
 
 # 1. Update Codebase
-cd "$PROJECT_DIR" || exit
+cd "$PROJECT_DIR" || { echo "❌ Cannot cd to $PROJECT_DIR"; exit 1; }
 echo "📦 Pulling latest changes from git..."
 git pull origin "$BRANCH"
 
