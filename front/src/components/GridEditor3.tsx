@@ -64,6 +64,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
 
   const pasteFromClipboard = async () => {
+    if (!currentDrawer) return;
     const data = localStorage.getItem('scangrid_clipboard');
     if (!data) return;
     try {
@@ -113,17 +114,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
   
   const handleUndo = async () => {
-    if (historyIndex <= 0) return;
+    if (!currentDrawer || historyIndex <= 0) return;
     const prevBins = history[historyIndex - 1];
     setHistoryIndex(historyIndex - 1);
-    
-    // Update local state and backend
-    // Note: This is complex because we need to sync with backend. 
-    // For now, we'll just update the frontend state (optimistic) and maybe warn user or trigger a full save?
-    // Actually, full sync is better.
-    // Let's implement full drawer save for undo.
-    // Simplifying for this scope: Just update store. Backend sync might be out of sync.
-    // Ideally we should call a "Bulk Update" API.
     
     const updatedLayers = currentDrawer.layers.map((layer, idx) =>
         idx === currentLayerIndex ? { ...layer, bins: prevBins } : layer
@@ -132,7 +125,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
 
   const handleRedo = () => {
-    if (historyIndex >= history.length - 1) return;
+    if (!currentDrawer || historyIndex >= history.length - 1) return;
     const nextBins = history[historyIndex + 1];
     setHistoryIndex(historyIndex + 1);
     
@@ -159,6 +152,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   
   // Helper to create bin (shared logic)
   const createNewBin = async (binData: any) => {
+      if (!currentDrawer) return;
+
       const tempId = uuidv4();
       const optimisticBin: Bin = { bin_id: tempId, ...binData };
       
@@ -934,13 +929,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
              <>
              <button
                 onClick={() => {
-                    const newBin = { ...selectedBin };
-                    delete newBin.bin_id; // Remove ID to force new creaton
-                    // Find position logic is inside createNewBin if handled correctly, 
-                    // otherwise manually find position.
-                    // Actually createNewBin handles finding position if x/y are passed but occupied?
-                    // My previous pasteFromClipboard logic finds position.
-                    // Copy to clipboard first then paste
+                    // Duplicate logic: copy current bin to clipboard and trigger paste immediately
                     localStorage.setItem('scangrid_clipboard', JSON.stringify(selectedBin));
                     pasteFromClipboard();
                 }}
