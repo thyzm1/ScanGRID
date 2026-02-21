@@ -1100,7 +1100,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             centerZoomedOut={true}
             limitToBounds={false}
             alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
-            wheel={{ step: 0.1, disabled: true }}
+            wheel={{ step: 0.1, disabled: false, activationKeys: ["Control", "Meta", "Shift"] }}
             pinch={{ step: 5 }}
             panning={{
               disabled: false,
