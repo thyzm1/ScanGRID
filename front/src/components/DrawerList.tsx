@@ -1,0 +1,207 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useStore } from '../store/useStore';
+import { apiClient } from '../services/api';
+import type { DrawerCreateRequest } from '../types/api';
+
+export default function DrawerList() {
+  const { drawers, currentDrawer, setCurrentDrawer, addDrawer, removeDrawer } =
+    useStore();
+  const [isCreating, setIsCreating] = useState(false);
+  const [newDrawerName, setNewDrawerName] = useState('');
+  const [gridWidth, setGridWidth] = useState(5);
+  const [gridDepth, setGridDepth] = useState(4);
+  const [loading, setLoading] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newDrawerName.trim()) return;
+
+    setLoading(true);
+    try {
+      const request: DrawerCreateRequest = {
+        name: newDrawerName,
+        width_units: gridWidth,
+        depth_units: gridDepth,
+        layers: [
+          {
+            z_index: 0,
+            bins: [],
+          },
+        ],
+      };
+
+      const drawer = await apiClient.createDrawer(request);
+      addDrawer(drawer);
+      setCurrentDrawer(drawer);
+      setNewDrawerName('');
+      setIsCreating(false);
+    } catch (error) {
+      console.error('Failed to create drawer:', error);
+      alert('Erreur lors de la création du tiroir');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (drawerId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Supprimer ce tiroir ?')) return;
+
+    try {
+      await apiClient.deleteDrawer(drawerId);
+      removeDrawer(drawerId);
+    } catch (error) {
+      console.error('Failed to delete drawer:', error);
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50">
+        <h2 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <i className="ri-archive-drawer-line text-blue-500"></i>
+          Mes Tiroirs
+        </h2>
+        <button
+          onClick={() => setIsCreating(!isCreating)}
+          className={`p-2 rounded-lg transition-colors shadow-sm ${
+            isCreating 
+              ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+          title={isCreating ? "Annuler" : "Nouveau tiroir"}
+        >
+          <i className={`ri-${isCreating ? 'close-line' : 'add-line'} text-xl`}></i>
+        </button>
+      </div>
+
+      {/* Create Form */}
+      <AnimatePresence>
+        {isCreating && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10"
+          >
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Atelier Électronique"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  value={newDrawerName}
+                  onChange={(e) => setNewDrawerName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Largeur (U)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={gridWidth}
+                      onChange={(e) => setGridWidth(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Prof. (U)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={gridDepth}
+                      onChange={(e) => setGridDepth(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={loading || !newDrawerName.trim()}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-check-line"></i>}
+                Créer le tiroir
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Drawer List */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        {drawers.length === 0 && !isCreating && (
+          <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-center opacity-60">
+            <i className="ri-inbox-line text-4xl mb-2"></i>
+            <p className="text-sm">Aucun tiroir configuré</p>
+          </div>
+        )}
+
+        {drawers.map((drawer) => {
+          const isActive = currentDrawer?.drawer_id === drawer.drawer_id;
+          return (
+            <motion.div
+              layout
+              key={drawer.drawer_id}
+              onClick={() => setCurrentDrawer(drawer)}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`
+                group relative p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 select-none
+                ${isActive 
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-500/20' 
+                  : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600'
+                }
+              `}
+            >
+              <div className={`
+                p-2.5 rounded-lg flex-shrink-0 transition-colors
+                ${isActive 
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 group-hover:text-gray-600'
+                }
+              `}>
+                <i className="ri-hard-drive-2-line text-xl"></i>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <h3 className={`font-semibold text-sm truncate ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-200'}`}>
+                  {drawer.name}
+                </h3>
+                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span className="flex items-center gap-1" title="Dimensions">
+                    <i className="ri-ruler-2-line"></i> {drawer.width_units}x{drawer.depth_units}
+                  </span>
+                  <span className="flex items-center gap-1" title="Couches">
+                    <i className="ri-stack-line"></i> {drawer.layers.length}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={(e) => handleDelete(drawer.drawer_id, e)}
+                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                title="Supprimer"
+              >
+                <i className="ri-delete-bin-line text-lg"></i>
+              </button>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

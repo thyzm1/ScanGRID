@@ -1,0 +1,268 @@
+import { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { useStore } from '../store/useStore';
+import GridEditor from './GridEditor';
+import { apiClient } from '../services/api';
+import type { Bin } from '../types/api';
+
+interface DrawerEditorProps {
+  editingBin: Bin | null;
+  setEditingBin: (bin: Bin | null) => void;
+}
+
+export default function DrawerEditor({ editingBin, setEditingBin }: DrawerEditorProps) {
+  const {
+    currentDrawer,
+    currentLayerIndex,
+    setCurrentLayerIndex,
+    setCurrentDrawer,
+    updateDrawer,
+  } = useStore();
+
+  const [editingBinLabel, setEditingBinLabel] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  if (!currentDrawer) return null;
+
+  const currentLayer = currentDrawer.layers[currentLayerIndex];
+
+  // Handle bin edit modal
+  const handleBinClick = (bin: Bin) => {
+    setEditingBin(bin);
+    setEditingBinLabel(bin.label_text);
+  };
+
+  const handleSaveBinLabel = () => {
+    if (!editingBin) return;
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? {
+            ...layer,
+            bins: layer.bins.map((b) =>
+              b.bin_id === editingBin.bin_id
+                ? { ...b, label_text: editingBinLabel }
+                : b
+            ),
+          }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+
+    setEditingBin(null);
+  };
+
+  // Add layer
+  const handleAddLayer = () => {
+    const newLayer = {
+      layer_id: uuidv4(),
+      z_index: currentDrawer.layers.length,
+      bins: [],
+    };
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: [...currentDrawer.layers, newLayer],
+    });
+
+    setCurrentLayerIndex(currentDrawer.layers.length);
+  };
+
+  // Delete layer
+  const handleDeleteLayer = () => {
+    if (currentDrawer.layers.length <= 1) {
+      alert('Impossible de supprimer la dernière couche');
+      return;
+    }
+
+    if (!confirm('Supprimer cette couche ?')) return;
+
+    const updatedLayers = currentDrawer.layers.filter(
+      (_, idx) => idx !== currentLayerIndex
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+
+    setCurrentLayerIndex(Math.max(0, currentLayerIndex - 1));
+  };
+
+  // Save to API
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const request = {
+        name: currentDrawer.name,
+        width_units: currentDrawer.width_units,
+        depth_units: currentDrawer.depth_units,
+        layers: currentDrawer.layers.map((layer) => ({
+          z_index: layer.z_index,
+          bins: layer.bins.map((bin) => ({
+            x_grid: bin.x_grid,
+            y_grid: bin.y_grid,
+            width_units: bin.width_units,
+            depth_units: bin.depth_units,
+            label_text: bin.label_text,
+            is_hole: bin.is_hole,
+          })),
+        })),
+      };
+
+      const updatedDrawer = await apiClient.createDrawer(request);
+      updateDrawer(updatedDrawer);
+      alert('Tiroir sauvegardé avec succès');
+    } catch (error) {
+      console.error('Failed to save drawer:', error);
+      alert('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold">{currentDrawer.name}</h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Grille {currentDrawer.width_units} × {currentDrawer.depth_units}
+          </p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="btn btn-primary"
+        >
+          {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+        </button>
+      </div>
+
+      {/* Layer Selector */}
+      <div className="mb-6 flex items-center gap-2">
+        <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+          {currentDrawer.layers.map((layer, idx) => (
+            <button
+              key={layer.layer_id}
+              onClick={() => setCurrentLayerIndex(idx)}
+              className={`
+                px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+                ${
+                  idx === currentLayerIndex
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-bg-secondary)] text-[var(--color-text)] border border-[var(--color-border)] hover:border-[var(--color-text-secondary)]'
+                }
+              `}
+            >
+              Couche {idx}{' '}
+              <span className="opacity-70">
+                ({layer.bins.length})
+              </span>
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleAddLayer}
+          className="btn btn-secondary text-sm whitespace-nowrap"
+        >
+          + Couche
+        </button>
+        {currentDrawer.layers.length > 1 && (
+          <button
+            onClick={handleDeleteLayer}
+            className="btn btn-secondary text-sm text-[var(--color-error)]"
+          >
+            Supprimer
+          </button>
+        )}
+      </div>
+
+      {/* Grid Editor */}
+      {currentLayer && <GridEditor onBinClick={handleBinClick} />}
+
+      {/* Bin Edit Modal */}
+      {editingBin && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setEditingBin(null)}
+        >
+          <div
+            className="card max-w-md w-full m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Éditer la boîte</h3>
+              <button
+                onClick={() => setEditingBin(null)}
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Nom de la boîte
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editingBinLabel}
+                  onChange={(e) => setEditingBinLabel(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Position
+                  </label>
+                  <div className="text-sm text-[var(--color-text-secondary)]">
+                    ({editingBin.x_grid}, {editingBin.y_grid})
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Dimensions
+                  </label>
+                  <div className="text-sm text-[var(--color-text-secondary)]">
+                    {editingBin.width_units} × {editingBin.depth_units}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handleSaveBinLabel}
+                  className="btn btn-primary flex-1"
+                >
+                  Enregistrer
+                </button>
+                <button
+                  onClick={() => setEditingBin(null)}
+                  className="btn btn-secondary"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

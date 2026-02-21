@@ -1,0 +1,295 @@
+import { useState, useRef, useCallback } from 'react';
+import GridLayout, { Layout } from 'react-grid-layout';
+import { v4 as uuidv4 } from 'uuid';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+import { useStore } from '../store/useStore';
+import type { Bin } from '../types/api';
+
+interface GridEditor2Props {
+  onBinClick: (bin: Bin) => void;
+  onBinDoubleClick: (bin: Bin) => void;
+}
+
+const BASE_CELL_SIZE = 80; // Base size increased from 60px
+
+export default function GridEditor2({ onBinClick, onBinDoubleClick }: GridEditor2Props) {
+  const { currentDrawer, currentLayerIndex, setCurrentDrawer } = useStore();
+  const [zoom, setZoom] = useState(1);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  if (!currentDrawer) return null;
+
+  const currentLayer = currentDrawer.layers[currentLayerIndex];
+  if (!currentLayer) return null;
+
+  const GRID_CELL_SIZE = BASE_CELL_SIZE * zoom;
+
+  // Convert bins to react-grid-layout format
+  const layout: Layout[] = currentLayer.bins.map((bin) => ({
+    i: bin.bin_id,
+    x: bin.x_grid,
+    y: bin.y_grid,
+    w: bin.width_units,
+    h: bin.depth_units,
+    minW: 1,
+    minH: 1,
+    maxW: currentDrawer.width_units,
+    maxH: currentDrawer.depth_units,
+  }));
+
+  // Check if a position is occupied
+  const isPositionOccupied = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    excludeBinId?: string
+  ): boolean => {
+    return currentLayer.bins.some((bin) => {
+      if (bin.bin_id === excludeBinId) return false;
+      
+      const overlapX = x < bin.x_grid + bin.width_units && x + w > bin.x_grid;
+      const overlapY = y < bin.y_grid + bin.depth_units && y + h > bin.y_grid;
+      
+      return overlapX && overlapY;
+    });
+  };
+
+  // Handle layout change (drag/resize)
+  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+    const updatedBins = newLayout.map((item) => {
+      const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
+      if (!existingBin) return null;
+
+      // Check if new position overlaps or overflows
+      if (
+        isPositionOccupied(item.x, item.y, item.w, item.h, item.i) ||
+        item.x + item.w > currentDrawer.width_units ||
+        item.y + item.h > currentDrawer.depth_units
+      ) {
+        return existingBin;
+      }
+
+      return {
+        ...existingBin,
+        x_grid: item.x,
+        y_grid: item.y,
+        width_units: item.w,
+        depth_units: item.h,
+      };
+    }).filter((bin): bin is Bin => bin !== null);
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  }, [currentLayer, currentDrawer, currentLayerIndex, setCurrentDrawer]);
+
+  // Add new bin
+  const handleAddBin = () => {
+    let foundPosition = false;
+    let x = 0;
+    let y = 0;
+
+    for (let py = 0; py < currentDrawer.depth_units && !foundPosition; py++) {
+      for (let px = 0; px < currentDrawer.width_units && !foundPosition; px++) {
+        if (!isPositionOccupied(px, py, 1, 1)) {
+          x = px;
+          y = py;
+          foundPosition = true;
+        }
+      }
+    }
+
+    if (!foundPosition) {
+      alert('Plus de place disponible dans la grille');
+      return;
+    }
+
+    const newBin: Bin = {
+      bin_id: uuidv4(),
+      x_grid: x,
+      y_grid: y,
+      width_units: 1,
+      depth_units: 1,
+      label_text: 'Nouvelle boîte',
+      is_hole: false,
+      color: '#3b82f6',
+    };
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? { ...layer, bins: [...layer.bins, newBin] }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  // Delete bin
+  const handleDeleteBin = (binId: string) => {
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? { ...layer, bins: layer.bins.filter((b) => b.bin_id !== binId) }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  // Zoom controls
+  const handleZoomIn = () => setZoom(Math.min(zoom + 0.2, 2));
+  const handleZoomOut = () => setZoom(Math.max(zoom - 0.2, 0.5));
+  const handleZoomReset = () => setZoom(1);
+
+  return (
+    <div className="h-full flex flex-col bg-[var(--color-bg)]">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3 p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+        <div className="flex items-center gap-2">
+          <button onClick={handleAddBin} className="btn btn-primary">
+            + Ajouter une boîte
+          </button>
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            {currentLayer.bins.length} boîte(s)
+          </span>
+        </div>
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleZoomOut}
+            className="px-3 py-1.5 rounded-lg hover:bg-[var(--color-bg)] transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+            </svg>
+          </button>
+          <button
+            onClick={handleZoomReset}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-[var(--color-bg)] transition-colors"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={handleZoomIn}
+            className="px-3 py-1.5 rounded-lg hover:bg-[var(--color-bg)] transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Grid Container */}
+      <div className="flex-1 overflow-auto p-8" ref={gridRef}>
+        <div
+          className="relative mx-auto"
+          style={{
+            width: currentDrawer.width_units * GRID_CELL_SIZE,
+            height: currentDrawer.depth_units * GRID_CELL_SIZE,
+          }}
+        >
+          {/* Background grid */}
+          <div className="absolute inset-0 pointer-events-none">
+            {Array.from({ length: currentDrawer.depth_units }).map((_, y) =>
+              Array.from({ length: currentDrawer.width_units }).map((_, x) => (
+                <div
+                  key={`cell-${x}-${y}`}
+                  className="absolute border border-[var(--color-border)]/30"
+                  style={{
+                    left: x * GRID_CELL_SIZE,
+                    top: y * GRID_CELL_SIZE,
+                    width: GRID_CELL_SIZE,
+                    height: GRID_CELL_SIZE,
+                  }}
+                />
+              ))
+            )}
+          </div>
+
+          {/* React Grid Layout */}
+          <GridLayout
+            className="layout"
+            layout={layout}
+            onLayoutChange={handleLayoutChange}
+            cols={currentDrawer.width_units}
+            rowHeight={GRID_CELL_SIZE}
+            width={currentDrawer.width_units * GRID_CELL_SIZE}
+            margin={[0, 0]}
+            containerPadding={[0, 0]}
+            compactType={null}
+            preventCollision={true}
+            isDraggable={true}
+            isResizable={true}
+            resizeHandles={['se']}
+          >
+            {currentLayer.bins.map((bin) => (
+              <div
+                key={bin.bin_id}
+                className="bg-blue-500/90 hover:bg-blue-500 border-2 border-blue-600 rounded-xl shadow-lg transition-all cursor-move group relative overflow-hidden"
+                onClick={() => onBinClick(bin)}
+                onDoubleClick={() => onBinDoubleClick(bin)}
+                style={{
+                  backgroundColor: bin.color ? `${bin.color}e6` : '#3b82f6e6',
+                  borderColor: bin.color || '#2563eb',
+                }}
+              >
+                {/* Delete button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteBin(bin.bin_id);
+                  }}
+                  className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 z-10"
+                  title="Supprimer"
+                >
+                  ×
+                </button>
+
+                {/* Content */}
+                <div className="p-3 text-white flex flex-col h-full">
+                  <div className="font-semibold text-sm mb-1 line-clamp-2">{bin.label_text}</div>
+                  {bin.description && (
+                    <div className="text-xs opacity-80 line-clamp-3">{bin.description}</div>
+                  )}
+                  {bin.image_url && (
+                    <div className="mt-auto pt-2">
+                      <img
+                        src={bin.image_url}
+                        alt={bin.label_text}
+                        className="w-full h-16 object-cover rounded"
+                      />
+                    </div>
+                  )}
+                  <div className="text-xs opacity-60 mt-auto">
+                    {bin.width_units}×{bin.depth_units}
+                  </div>
+                </div>
+
+                {/* Resize handle indicator */}
+                <div className="absolute bottom-0 right-0 w-4 h-4 opacity-50">
+                  <svg viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M16 16V10h-2v4h-4v2zM10 16H4v-2h6v2zM16 4h-2V0h2zM4 0v2H0V0z" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </GridLayout>
+        </div>
+      </div>
+    </div>
+  );
+}

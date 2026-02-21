@@ -1,0 +1,58 @@
+name: scangrid_flutter
+description: Application de scan et gestion d'inventaire Gridfinity avec OCR
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  
+  # Network
+  dio: ^5.4.0
+  
+  # Models & Serialization
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+  
+  # Camera & Vision
+  camera: ^0.10.5+9
+  google_mlkit_text_recognition: ^0.11.0
+  image: ^4.1.7
+  
+  # OpenCV pour détection de grille (optionnel)
+  # opencv_dart: ^1.0.4
+  
+  # Utils
+  uuid: ^4.3.3
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+  logger: ^2.0.2+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Build runners
+  build_runner: ^2.4.8
+  freezed: ^2.4.7
+  json_serializable: ^6.7.1
+  riverpod_generator: ^2.3.11
+  
+  # Linting
+  flutter_lints: ^3.0.1
+  
+  # Testing
+  mockito: ^5.4.4
+
+flutter:
+  uses-material-design: true
+  
+  # assets:
+  #   - assets/images/

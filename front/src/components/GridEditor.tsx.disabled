@@ -1,0 +1,247 @@
+import GridLayout, { Layout } from 'react-grid-layout';
+import { v4 as uuidv4 } from 'uuid';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+import { useStore } from '../store/useStore';
+import type { Bin } from '../types/api';
+
+interface GridEditorProps {
+  onBinClick: (bin: Bin) => void;
+}
+
+const GRID_CELL_SIZE = 60; // pixels per grid unit
+
+export default function GridEditor({ onBinClick }: GridEditorProps) {
+  const { currentDrawer, currentLayerIndex, setCurrentDrawer } = useStore();
+
+  if (!currentDrawer) return null;
+
+  const currentLayer = currentDrawer.layers[currentLayerIndex];
+  if (!currentLayer) return null;
+
+  // Convert bins to react-grid-layout format
+  const layout: Layout[] = currentLayer.bins.map((bin) => ({
+    i: bin.bin_id,
+    x: bin.x_grid,
+    y: bin.y_grid,
+    w: bin.width_units,
+    h: bin.depth_units,
+    minW: 1,
+    minH: 1,
+    maxW: currentDrawer.width_units,
+    maxH: currentDrawer.depth_units,
+  }));
+
+  // Check if a position is occupied by any bin
+  const isPositionOccupied = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    excludeBinId?: string
+  ): boolean => {
+    return currentLayer.bins.some((bin) => {
+      if (bin.bin_id === excludeBinId) return false;
+      
+      const overlapX =
+        x < bin.x_grid + bin.width_units && x + w > bin.x_grid;
+      const overlapY =
+        y < bin.y_grid + bin.depth_units && y + h > bin.y_grid;
+      
+      return overlapX && overlapY;
+    });
+  };
+
+  // Handle layout change (drag/resize)
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    const updatedBins = newLayout.map((item) => {
+      const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
+      if (!existingBin) return null;
+
+      // Check if new position overlaps with other bins
+      if (
+        isPositionOccupied(item.x, item.y, item.w, item.h, item.i) ||
+        item.x + item.w > currentDrawer.width_units ||
+        item.y + item.h > currentDrawer.depth_units
+      ) {
+        // Revert to original position if overlap detected
+        return existingBin;
+      }
+
+      return {
+        ...existingBin,
+        x_grid: item.x,
+        y_grid: item.y,
+        width_units: item.w,
+        depth_units: item.h,
+      };
+    }).filter((bin): bin is Bin => bin !== null);
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  // Add new bin
+  const handleAddBin = () => {
+    // Find first available position
+    let foundPosition = false;
+    let x = 0;
+    let y = 0;
+
+    for (let py = 0; py < currentDrawer.depth_units && !foundPosition; py++) {
+      for (let px = 0; px < currentDrawer.width_units && !foundPosition; px++) {
+        if (!isPositionOccupied(px, py, 1, 1)) {
+          x = px;
+          y = py;
+          foundPosition = true;
+        }
+      }
+    }
+
+    if (!foundPosition) {
+      alert('Plus de place disponible dans la grille');
+      return;
+    }
+
+    const newBin: Bin = {
+      bin_id: uuidv4(),
+      x_grid: x,
+      y_grid: y,
+      width_units: 1,
+      depth_units: 1,
+      label_text: 'Nouvelle boîte',
+      is_hole: false,
+    };
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? { ...layer, bins: [...layer.bins, newBin] }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  // Delete bin
+  const handleDeleteBin = (binId: string) => {
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? { ...layer, bins: layer.bins.filter((b) => b.bin_id !== binId) }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm text-[var(--color-text-secondary)]">
+          Grille {currentDrawer.width_units} × {currentDrawer.depth_units} •{' '}
+          {currentLayer.bins.length} boîte{currentLayer.bins.length > 1 ? 's' : ''}
+        </div>
+        <button onClick={handleAddBin} className="btn btn-primary text-sm">
+          + Ajouter une boîte
+        </button>
+      </div>
+
+      {/* Grid Container */}
+      <div
+        className="relative border-2 border-dashed border-[var(--color-border)] rounded-lg p-4 bg-[var(--color-bg-secondary)]"
+        style={{
+          width: currentDrawer.width_units * GRID_CELL_SIZE + 32,
+          height: currentDrawer.depth_units * GRID_CELL_SIZE + 32,
+        }}
+      >
+        {/* Background grid lines */}
+        <div className="absolute inset-4 pointer-events-none">
+          {Array.from({ length: currentDrawer.depth_units + 1 }).map((_, i) => (
+            <div
+              key={`h-${i}`}
+              className="absolute w-full border-t border-[var(--color-border)]/30"
+              style={{ top: i * GRID_CELL_SIZE }}
+            />
+          ))}
+          {Array.from({ length: currentDrawer.width_units + 1 }).map((_, i) => (
+            <div
+              key={`v-${i}`}
+              className="absolute h-full border-l border-[var(--color-border)]/30"
+              style={{ left: i * GRID_CELL_SIZE }}
+            />
+          ))}
+        </div>
+
+        {/* React Grid Layout */}
+        <GridLayout
+          className="layout"
+          layout={layout}
+          cols={currentDrawer.width_units}
+          rowHeight={GRID_CELL_SIZE}
+          width={currentDrawer.width_units * GRID_CELL_SIZE}
+          maxRows={currentDrawer.depth_units}
+          compactType={null}
+          preventCollision={true}
+          onLayoutChange={handleLayoutChange}
+          draggableHandle=".drag-handle"
+        >
+          {currentLayer.bins.map((bin) => (
+            <div
+              key={bin.bin_id}
+              className="bg-[var(--color-primary)] border-2 border-[var(--color-primary)] rounded-lg shadow-lg overflow-hidden group"
+              style={{
+                backgroundColor: bin.is_hole
+                  ? 'var(--color-error)'
+                  : 'var(--color-primary)',
+              }}
+            >
+              <div className="drag-handle cursor-move h-full p-2 flex flex-col">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-white text-xs font-medium truncate flex-1">
+                    {bin.label_text || 'Sans nom'}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteBin(bin.bin_id);
+                    }}
+                    className="text-white/70 hover:text-white transition-colors ml-1"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="text-white/70 text-xs">
+                  {bin.width_units}×{bin.depth_units} @ ({bin.x_grid},{bin.y_grid})
+                </div>
+                <button
+                  onClick={() => onBinClick(bin)}
+                  className="mt-auto text-xs text-white/90 hover:text-white bg-white/10 hover:bg-white/20 rounded px-2 py-1 transition-colors"
+                >
+                  Éditer
+                </button>
+              </div>
+            </div>
+          ))}
+        </GridLayout>
+      </div>
+    </div>
+  );
+}

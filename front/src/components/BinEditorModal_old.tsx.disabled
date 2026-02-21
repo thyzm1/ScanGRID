@@ -1,0 +1,223 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import type { Bin } from '../types/api';
+
+interface BinEditorModalProps {
+  bin: Bin | null;
+  onClose: () => void;
+  onSave: (updatedBin: Bin) => void;
+}
+
+export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalProps) {
+  const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
+  const [content, setContent] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [color, setColor] = useState('#3b82f6');
+
+  useEffect(() => {
+    if (bin) {
+      setLabel(bin.label_text || '');
+      setDescription(bin.description || '');
+      setContent(bin.content || '');
+      setImageUrl(bin.image_url || '');
+      setColor(bin.color || '#3b82f6');
+    }
+  }, [bin]);
+
+  if (!bin) return null;
+
+  const handleSave = () => {
+    onSave({
+      ...bin,
+      label_text: label,
+      description,
+      content,
+      image_url: imageUrl,
+      color,
+    });
+    onClose();
+  };
+
+  const colorPresets = [
+    { name: 'Bleu', value: '#3b82f6' },
+    { name: 'Vert', value: '#10b981' },
+    { name: 'Rouge', value: '#ef4444' },
+    { name: 'Violet', value: '#8b5cf6' },
+    { name: 'Orange', value: '#f59e0b' },
+    { name: 'Rose', value: '#ec4899' },
+    { name: 'Cyan', value: '#06b6d4' },
+    { name: 'Gris', value: '#6b7280' },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[var(--color-bg)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${color}20`, color }}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Éditer la boîte</h2>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Position ({bin.x_grid}, {bin.y_grid}) • {bin.width_units}×{bin.depth_units}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          {/* Label */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Titre <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className="input w-full"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Nom de la boîte"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <input
+              type="text"
+              className="input w-full"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description courte"
+            />
+          </div>
+
+          {/* Content */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Contenu détaillé</label>
+            <textarea
+              className="input w-full min-h-24 resize-y"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Décrivez le contenu de la boîte en détail..."
+            />
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Image (URL)</label>
+            <input
+              type="url"
+              className="input w-full"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+            />
+            {imageUrl && (
+              <div className="mt-3">
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="w-full h-48 object-cover rounded-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Color picker */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Couleur</label>
+            <div className="grid grid-cols-4 gap-2">
+              {colorPresets.map((preset) => (
+                <button
+                  key={preset.value}
+                  onClick={() => setColor(preset.value)}
+                  className={`h-12 rounded-lg border-2 transition-all ${
+                    color === preset.value
+                      ? 'border-white scale-105 shadow-lg'
+                      : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: preset.value }}
+                  title={preset.name}
+                >
+                  {color === preset.value && (
+                    <svg className="w-6 h-6 mx-auto text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-12 h-12 rounded-lg cursor-pointer"
+              />
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="input flex-1"
+                placeholder="#3b82f6"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-[var(--color-border)] flex gap-3">
+          <button onClick={onClose} className="btn btn-secondary flex-1">
+            Annuler
+          </button>
+          <button onClick={handleSave} className="btn btn-primary flex-1">
+            Enregistrer
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

@@ -1,0 +1,320 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useStore } from './store/useStore';
+import DrawerList from './components/DrawerList';
+import GridEditor2 from './components/GridEditor2';
+import Viewer3D from './components/Viewer3D';
+import ThemeToggle from './components/ThemeToggle';
+import SearchBar from './components/SearchBar';
+import BinEditorModal from './components/BinEditorModal';
+import { apiClient } from './services/api';
+import type { Bin } from './types/api';
+
+function App() {
+  const { darkMode, currentDrawer, currentLayerIndex, setDrawers, setCurrentDrawer } = useStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D');
+  const [editingBin, setEditingBin] = useState<Bin | null>(null);
+
+  // Sync dark mode with document
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
+  // Load drawers on mount
+  useEffect(() => {
+    apiClient
+      .listDrawers()
+      .then(setDrawers)
+      .catch((err) => console.error('Failed to load drawers:', err));
+  }, [setDrawers]);
+
+  // Auto-close sidebar on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleBinClick = (_bin: Bin) => {
+    // Single click - just select (could be used later)
+  };
+
+  const handleBinDoubleClick = (bin: Bin) => {
+    setEditingBin(bin);
+  };
+
+  const handleSaveBin = (updatedBin: Bin) => {
+    if (!currentDrawer) return;
+
+    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
+      idx === currentLayerIndex
+        ? {
+            ...layer,
+            bins: layer.bins.map((b) =>
+              b.bin_id === updatedBin.bin_id ? updatedBin : b
+            ),
+          }
+        : layer
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    });
+  };
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+      {/* Header */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 100 }}
+        className="h-16 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 backdrop-blur-md flex items-center justify-between px-6 relative z-10"
+      >
+        <div className="flex items-center gap-4">
+          {/* Menu Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-[var(--color-bg)] rounded-lg transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              {sidebarOpen ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              )}
+            </svg>
+          </motion.button>
+
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-3"
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold">ScanGRID</h1>
+          </motion.div>
+
+          {/* Current Drawer Info */}
+          {currentDrawer && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="hidden md:flex items-center gap-2 ml-4 px-3 py-1.5 bg-[var(--color-bg)] rounded-lg text-sm"
+            >
+              <svg
+                className="w-4 h-4 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              <span className="font-medium">{currentDrawer.name}</span>
+              <span className="text-[var(--color-text-secondary)]">
+                {currentDrawer.width_units}×{currentDrawer.depth_units}
+              </span>
+            </motion.div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <SearchBar />
+
+          {/* 2D/3D Toggle */}
+          {currentDrawer && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-1 bg-[var(--color-bg)] rounded-lg p-1"
+            >
+              <button
+                onClick={() => setViewMode('2D')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === '2D'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                2D
+              </button>
+              <button
+                onClick={() => setViewMode('3D')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === '3D'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                3D
+              </button>
+            </motion.div>
+          )}
+
+          <ThemeToggle />
+        </div>
+      </motion.header>
+
+      {/* Main Content */}
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        {/* Sidebar */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.aside
+              initial={{ x: -300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+              className="w-80 border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30 backdrop-blur-sm overflow-y-auto"
+            >
+              <div className="p-6">
+                <DrawerList />
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* Main Editor Area */}
+        <main className="flex-1 overflow-hidden relative">
+          {currentDrawer ? (
+            <AnimatePresence mode="wait">
+              {viewMode === '2D' ? (
+                <motion.div
+                  key="2d-view"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full"
+                >
+                  <GridEditor2 
+                    onBinClick={handleBinClick} 
+                    onBinDoubleClick={handleBinDoubleClick}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="3d-view"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full relative"
+                >
+                  <Viewer3D onBinClick={handleBinDoubleClick} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="h-full flex flex-col items-center justify-center text-center px-6"
+            >
+              <motion.div
+                animate={{
+                  scale: [1, 1.05, 1],
+                  rotate: [0, 5, 0, -5, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  repeatType: 'reverse',
+                }}
+                className="w-24 h-24 mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center"
+              >
+                <svg
+                  className="w-12 h-12 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
+                </svg>
+              </motion.div>
+              <h2 className="text-2xl font-bold mb-2">Aucun tiroir sélectionné</h2>
+              <p className="text-[var(--color-text-secondary)] max-w-md">
+                Créez un nouveau tiroir ou sélectionnez-en un existant pour commencer
+                à organiser vos bins Gridfinity
+              </p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSidebarOpen(true)}
+                className="mt-8 px-6 py-3 bg-blue-500 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-shadow"
+              >
+                Ouvrir la liste des tiroirs
+              </motion.button>
+            </motion.div>
+          )}
+        </main>
+      </div>
+
+      {/* Bin Editor Modal */}
+      <AnimatePresence>
+        {editingBin && (
+          <BinEditorModal
+            bin={editingBin}
+            onClose={() => setEditingBin(null)}
+            onSave={handleSaveBin}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default App;

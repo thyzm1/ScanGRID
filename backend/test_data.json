@@ -1,0 +1,130 @@
+{
+  "drawers": [
+    {
+      "name": "Tiroir Composants Électroniques",
+      "layers": [
+        {
+          "z_index": 0,
+          "bins": [
+            {
+              "x_grid": 0,
+              "y_grid": 0,
+              "width_units": 2,
+              "depth_units": 1,
+              "label_text": "Résistances 10kΩ"
+            },
+            {
+              "x_grid": 2,
+              "y_grid": 0,
+              "width_units": 1,
+              "depth_units": 1,
+              "label_text": "Résistances 1kΩ"
+            },
+            {
+              "x_grid": 3,
+              "y_grid": 0,
+              "width_units": 1,
+              "depth_units": 1,
+              "label_text": "Résistances 100Ω"
+            },
+            {
+              "x_grid": 0,
+              "y_grid": 1,
+              "width_units": 2,
+              "depth_units": 1,
+              "label_text": "Condensateurs 100nF"
+            },
+            {
+              "x_grid": 2,
+              "y_grid": 1,
+              "width_units": 2,
+              "depth_units": 1,
+              "label_text": "Condensateurs 10µF"
+            }
+          ]
+        },
+        {
+          "z_index": 1,
+          "bins": [
+            {
+              "x_grid": 0,
+              "y_grid": 0,
+              "width_units": 4,
+              "depth_units": 2,
+              "label_text": "LEDs Assortiment"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tiroir Outils",
+      "layers": [
+        {
+          "z_index": 0,
+          "bins": [
+            {
+              "x_grid": 0,
+              "y_grid": 0,
+              "width_units": 3,
+              "depth_units": 2,
+              "label_text": "Tournevis"
+            },
+            {
+              "x_grid": 3,
+              "y_grid": 0,
+              "width_units": 2,
+              "depth_units": 2,
+              "label_text": "Pinces"
+            },
+            {
+              "x_grid": 0,
+              "y_grid": 2,
+              "width_units": 5,
+              "depth_units": 1,
+              "label_text": "Câbles USB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tiroir Microcontrôleurs",
+      "layers": [
+        {
+          "z_index": 0,
+          "bins": [
+            {
+              "x_grid": 0,
+              "y_grid": 0,
+              "width_units": 2,
+              "depth_units": 2,
+              "label_text": "Arduino Uno"
+            },
+            {
+              "x_grid": 2,
+              "y_grid": 0,
+              "width_units": 2,
+              "depth_units": 2,
+              "label_text": "ESP32"
+            },
+            {
+              "x_grid": 0,
+              "y_grid": 2,
+              "width_units": 3,
+              "depth_units": 1,
+              "label_text": "Raspberry Pi Zero"
+            },
+            {
+              "x_grid": 3,
+              "y_grid": 2,
+              "width_units": 2,
+              "depth_units": 1,
+              "label_text": "Capteurs DHT22"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
