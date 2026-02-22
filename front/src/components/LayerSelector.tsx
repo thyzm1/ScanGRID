@@ -108,7 +108,7 @@ const LayerSelector = () => {
       <div className="flex items-center gap-2 p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl pointer-events-auto transition-all hover:scale-[1.02]">
         
         {/* Layer Tabs Container */}
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[150px] sm:max-w-none px-1 pb-1">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[60vw] sm:max-w-none px-1 pb-1">
           <AnimatePresence mode='popLayout'>
           {currentDrawer.layers.map((layer, idx) => {
              const isActive = idx === currentLayerIndex;

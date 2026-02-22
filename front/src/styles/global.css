@@ -40,16 +40,19 @@
   box-sizing: border-box;
 }
 
+html {
+  background-color: var(--color-bg);
+}
+
 html,
 body,
 #root {
-  height: 100dvh;
+  height: 100vh;
   width: 100vw;
   margin: 0;
   padding: 0;
   overflow: hidden;
   position: fixed;
-  background-color: var(--color-bg);
 }
 
 body {
@@ -57,9 +60,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-bg);
+  background-color: transparent;
   color: var(--color-text);
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  background-color: transparent;
 }
 
 /* ============================================================================

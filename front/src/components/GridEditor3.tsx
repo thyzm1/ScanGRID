@@ -945,7 +945,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 sm:top-4 sm:left-4 sm:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-max">
+      <div className="absolute top-28 left-1/2 -translate-x-1/2 sm:top-4 sm:left-4 sm:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-max">
         <div className="pointer-events-auto">
           <LayerSelector />
         </div>
