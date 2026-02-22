@@ -758,13 +758,15 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             <div className="absolute top-0 right-0 p-1 z-50">
                 <button
                   onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (window.confirm('Supprimer cette boîte ?')) {
                         handleDeleteBin(bin.bin_id);
                     }
                   }}
-                  className="p-1 bg-red-500 text-white rounded-bl-lg rounded-tr-sm shadow-md hover:bg-red-600 transition-colors cursor-pointer"
+                  className="cancel-drag p-1 bg-red-500 text-white rounded-bl-lg rounded-tr-sm shadow-md hover:bg-red-600 transition-colors cursor-pointer"
                   title="Supprimer (Del)"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -777,11 +779,13 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             <div className="absolute bottom-0 left-0 flex gap-1 p-1 z-50">
                 <button
                   onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     copyToClipboard(bin);
                   }}
-                  className="p-1 bg-blue-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
+                  className="cancel-drag p-1 bg-blue-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
                   title="Copier (Ctrl+C)"
                 >
                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -790,11 +794,13 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 </button>
                 <button
                   onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleMoveToDock(bin.bin_id);
                   }}
-                  className="p-1 bg-yellow-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
+                  className="cancel-drag p-1 bg-yellow-500 text-white rounded-full transition-opacity shadow-md transform hover:scale-110 cursor-pointer"
                   title="Déplacer vers la zone d'attente"
                 >
                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1162,6 +1168,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     isDraggingRef.current = false;
                   }, 100);
                 }}
+                draggableCancel=".cancel-drag"
                 resizeHandles={['se']}
                 cols={currentDrawer.width_units}
                 rowHeight={BASE_CELL_SIZE}
