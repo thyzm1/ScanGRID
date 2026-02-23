@@ -589,7 +589,7 @@ async def improve_description(
     # Construction du prompt optimisé
     prompt = f"""Tu es un assistant technique spécialisé dans l'inventaire de composants électroniques.
 
-Génère une description ultra-concise (maximum 25 mots) à partir des informations suivantes :
+Génère une description concise (maximum 50 mots) à partir des informations suivantes :
 
 Titre : {title}
 Contenu : {content if content else "Aucune information supplémentaire"}
@@ -610,7 +610,7 @@ Description :"""
             prompt=prompt,
             options={
                 'temperature': 0.2,    # Très bas pour rester factuel
-                'num_predict': 40,     # Limite la longueur (économie CPU)
+                'num_predict': 60,     # Limite la longueur (économie CPU)
                 'top_p': 0.9           # Diversité contrôlée
             }
         )
