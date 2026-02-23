@@ -1,5 +1,6 @@
 import { Bin } from '../types/api';
 import { useStore } from '../store/useStore';
+import { IconDisplay } from './IconDisplay';
 
 interface UnplacedDockProps {
   unplacedBins: Bin[];
@@ -78,7 +79,7 @@ export default function UnplacedDock({
                   )}
                   <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400">
                     <span className="flex items-center gap-1">
-                      <i className={bin.content.icon || 'ri-box-3-line'}></i>
+                      <IconDisplay icon={bin.content.icon || 'ri-box-3-line'} />
                       {bin.width_units}x{bin.depth_units}
                     </span>
                     {bin.content.items && bin.content.items.length > 0 && (

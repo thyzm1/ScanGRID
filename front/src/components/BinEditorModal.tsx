@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import type { Bin, BinContent } from '../types/api';
 import { useStore } from '../store/useStore';
 
+import { IconPicker } from './IconPicker';
+
 interface BinEditorModalProps {
   bin: Bin | null;
   onClose: () => void;
@@ -200,21 +202,9 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
               </select>
             </div>
 
-            {/* Icon */}
-            <div>
-              <label className="block text-sm font-semibold mb-2">Icône (RemixIcon)</label>
-              <div className="flex gap-2">
-                 <input
-                  type="text"
-                  className="input flex-1"
-                  value={icon}
-                  onChange={(e) => setIcon(e.target.value)}
-                  placeholder="ri-tools-line"
-                />
-                <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
-                    {icon ? <i className={`${icon} text-xl`} /> : <span className="text-xs text-gray-500">?</span>}
-                </div>
-              </div>
+            {/* Icon Picker */}
+            <div className="flex-1">
+              <IconPicker value={icon} onChange={setIcon} />
             </div>
           </div>
 

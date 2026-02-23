@@ -8,6 +8,7 @@ import 'react-resizable/css/styles.css';
 import { useStore } from '../store/useStore';
 import LayerSelector from './LayerSelector';
 import UnplacedDock from './UnplacedDock';
+import { IconDisplay } from './IconDisplay';
 import type { Bin } from '../types/api';
 
 import { apiClient } from '../services/api';
@@ -16,7 +17,10 @@ const PASTEL_COLORS = [
   '#F87171', '#FBBF24', '#34D399', '#60A5FA', '#818CF8', '#A78BFA', '#F472B6', '#FB923C', '#A3E635', '#2DD4BF', '#F43F5E',
 ];
 const AVAILABLE_ICONS = [
-  'ri-tools-line', 'ri-file-list-line', 'ri-image-line', 'ri-camera-line', 'ri-music-line', 'ri-video-line', 'ri-mail-line', 'ri-phone-line', 'ri-map-pin-line', 'ri-gift-line', 'ri-trophy-line', 'ri-briefcase-line', 'ri-cup-line', 'ri-leaf-line', 'ri-seedling-line', 'ri-edit-line', 'ri-delete-bin-line', 'ri-lock-line', 'ri-shield-line', 'ri-key-line', 'ri-eye-line', 'ri-search-line', 'ri-share-line', 'ri-upload-cloud-line', 'ri-download-cloud-line', 'ri-cpu-line', 'ri-database-2-line', 'ri-server-line', 'ri-smartphone-line', 'ri-macbook-line', 'ri-hard-drive-line',
+  'home', 'search', 'settings', 'favorite', 'star', 'check_circle', 'add', 'delete', 'edit', 'close',
+  'menu', 'arrow_back', 'arrow_forward', 'folder', 'description', 'group', 'person', 'lock', 'visibility',
+  'build', 'hardware', 'construction', 'inventory_2', 'category', 'palette', 'light_mode', 'dark_mode',
+  'qr_code', 'print', 'share', 'save', 'download', 'upload', 'extension', 'grid_view', 'list'
 ];
 
 const getRandomColor = () => PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
@@ -722,11 +726,11 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             {/* Icon - visible as a watermark/background element or alongside title */}
             {bin.content.icon && !is1x1 && (
                <div className={`absolute top-1 right-1 opacity-20 pointer-events-none text-4xl`}>
-                 <i className={`${bin.content.icon}`}></i>
+                 <IconDisplay icon={bin.content.icon} />
                </div>
             )}
           <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
-             {bin.content.icon && isHeight1 && <i className={`${bin.content.icon} text-lg`}></i>}
+             {bin.content.icon && isHeight1 && <IconDisplay icon={bin.content.icon} className="text-lg" />}
             {bin.content.title}
           </div>
           {!isHeight1 && bin.content.description && (
