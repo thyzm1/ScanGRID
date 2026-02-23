@@ -587,21 +587,19 @@ async def improve_description(
     logger.info(f"🤖 AI Description - Titre: {title[:50]}...")
     
     # Construction du prompt optimisé
-    prompt = f"""Tu es un assistant technique spécialisé dans l'inventaire de composants électroniques.
+    prompt = f"""Tu es un assistant technique spécialisé dans l'inventaire de composants électroniques et de visserie.
 
-Génère une description concise (maximum 50 mots) à partir des informations suivantes :
+Génère une description ultra-concise (maximum 50 mots) pour cet article :
 
 Titre : {title}
-Contenu : {content if content else "Aucune information supplémentaire"}
-Consigne : {instruction}
+{f"Détails : {content}" if content else ""}
 
 Règles strictes :
-- Style : Direct, factuel, sans adjectifs marketing
-- Structure : [Fonction principale] + [Caractéristique clé] + [Usage cible]
-- Format : Une seule phrase ou deux segments courts séparés par un point
-- Si le contenu est vide ou contradictoire, base-toi uniquement sur le titre
-- N'invente pas de spécifications techniques non fournies
-- Renvoie uniquement la description, sans préambule ni conclusion
+- Réponds UNIQUEMENT avec la description, sans préambule
+- Style direct et factuel, sans adjectifs marketing
+- Une seule phrase claire et précise
+- Base-toi sur le titre et les détails fournis
+- N'invente pas de spécifications non mentionnées
 
 Description :"""
 
