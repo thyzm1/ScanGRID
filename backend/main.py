@@ -32,6 +32,13 @@ from schemas import (
     CategoryResponse,
 )
 
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+    logger.warning("⚠️ Ollama non disponible - pip install ollama")
+
 # Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
@@ -554,6 +561,75 @@ async def delete_category(
     await db.commit()
     
     return SuccessResponse(message=f"Catégorie {category_id} supprimée avec succès")
+
+
+# ============= AI DESCRIPTION IMPROVEMENT =============
+
+@api_router.post(
+    "/improve-description",
+    tags=["AI"],
+    summary="Améliorer une description avec IA locale"
+)
+async def improve_description(
+    title: str,
+    content: str = "",
+    instruction: str = "Description pour un inventaire de composants électroniques"
+):
+    """
+    Utilise Ollama (llama3.2:1b) pour générer une description ultra-concise.
+    """
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service Ollama non disponible. Installez ollama: pip install ollama"
+        )
+    
+    logger.info(f"🤖 AI Description - Titre: {title[:50]}...")
+    
+    # Construction du prompt optimisé
+    prompt = f"""Tu es un assistant technique spécialisé dans l'inventaire de composants électroniques.
+
+Génère une description ultra-concise (maximum 25 mots) à partir des informations suivantes :
+
+Titre : {title}
+Contenu : {content if content else "Aucune information supplémentaire"}
+Consigne : {instruction}
+
+Règles strictes :
+- Style : Direct, factuel, sans adjectifs marketing
+- Structure : [Fonction principale] + [Caractéristique clé] + [Usage cible]
+- Format : Une seule phrase ou deux segments courts séparés par un point
+- Si le contenu est vide ou contradictoire, base-toi uniquement sur le titre
+- N'invente pas de spécifications techniques non fournies
+
+Description :"""
+
+    try:
+        response = ollama.generate(
+            model='llama3.2:1b',
+            prompt=prompt,
+            options={{
+                'temperature': 0.2,    # Très bas pour rester factuel
+                'num_predict': 40,     # Limite la longueur (économie CPU)
+                'top_p': 0.9           # Diversité contrôlée
+            }}
+        )
+        
+        improved_description = response['response'].strip()
+        
+        logger.info(f"✅ Description générée: {improved_description[:50]}...")
+        
+        return {{
+            "improved_description": improved_description,
+            "model": "llama3.2:1b"
+        }}
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur Ollama: {{str(e)}}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la génération: {{str(e)}}"
+        )
 
 
 # Monter le routeur API sous le préfixe /api

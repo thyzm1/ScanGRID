@@ -22,6 +22,27 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip install -r requirements.txt
+
+# 2.1. Setup Ollama
+echo "🤖 Setting up Ollama AI..."
+if ! command -v ollama &> /dev/null; then
+    echo "⚠️  Ollama not installed. Installing..."
+    curl -fsSL https://ollama.ai/install.sh | sh
+fi
+
+# Start Ollama service
+if ! pgrep -x "ollama" > /dev/null; then
+    echo "Starting Ollama service..."
+    sudo systemctl start ollama 2>/dev/null || nohup ollama serve > /dev/null 2>&1 &
+    sleep 2
+fi
+
+# Pull model if needed
+if ! ollama list | grep -q "llama3.2:1b"; then
+    echo "📥 Downloading llama3.2:1b model (~1.3 GB)..."
+    ollama pull llama3.2:1b
+fi
+echo "✅ Ollama ready"
 cd ..
 
 # 3. Build Frontend

@@ -131,6 +131,25 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // ========================================================================
+  // AI DESCRIPTION IMPROVEMENT
+  // ========================================================================
+
+  async improveDescription(
+    title: string,
+    content: string = '',
+    instruction: string = 'Description pour un inventaire de composants électroniques'
+  ): Promise<{ improved_description: string; model: string }> {
+    const params = new URLSearchParams({
+      title,
+      content,
+      instruction,
+    });
+    return this.request(`/improve-description?${params.toString()}`, {
+      method: 'POST',
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

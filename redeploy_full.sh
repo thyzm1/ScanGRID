@@ -41,6 +41,41 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip install -r requirements.txt
+
+# 3.1. Vérification et configuration d'Ollama
+echo "🤖 3.1. Configuration d'Ollama pour l'IA..."
+if ! command -v ollama &> /dev/null; then
+    echo "⚠️  Ollama n'est pas installé. Installation..."
+    curl -fsSL https://ollama.ai/install.sh | sh
+    echo "✅ Ollama installé"
+else
+    echo "✅ Ollama déjà installé"
+fi
+
+# Vérifier si le service tourne
+if ! pgrep -x "ollama" > /dev/null; then
+    echo "🔄 Démarrage du service Ollama..."
+    # Essayer avec systemd d'abord
+    if sudo systemctl start ollama 2>/dev/null; then
+        echo "✅ Ollama démarré via systemd"
+    else
+        # Fallback: démarrage manuel en arrière-plan
+        nohup ollama serve > /dev/null 2>&1 &
+        sleep 2
+        echo "✅ Ollama démarré en arrière-plan"
+    fi
+else
+    echo "✅ Service Ollama déjà actif"
+fi
+
+# Vérifier et télécharger le modèle si nécessaire
+if ! ollama list | grep -q "llama3.2:1b"; then
+    echo "📥 Téléchargement du modèle llama3.2:1b (~1.3 GB)..."
+    ollama pull llama3.2:1b
+    echo "✅ Modèle téléchargé"
+else
+    echo "✅ Modèle llama3.2:1b déjà disponible"
+fi
 # Vérification rapide de la syntaxe
 python3 -m py_compile main.py
 if [ $? -eq 0 ]; then

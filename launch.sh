@@ -13,6 +13,27 @@ trap cleanup SIGINT SIGTERM
 
 echo "🚀 Démarrage de ScanGRID..."
 
+# 0. Vérifier et démarrer Ollama
+echo "🤖 Vérification d'Ollama..."
+if command -v ollama &> /dev/null; then
+    if ! pgrep -x "ollama" > /dev/null; then
+        echo "🔄 Démarrage d'Ollama..."
+        nohup ollama serve > /dev/null 2>&1 &
+        sleep 2
+        echo "✅ Ollama démarré"
+    else
+        echo "✅ Ollama déjà actif"
+    fi
+    # Vérifier le modèle
+    if ! ollama list | grep -q "llama3.2:1b"; then
+        echo "⚠️  Modèle llama3.2:1b non trouvé. Téléchargez-le avec:"
+        echo "   ollama pull llama3.2:1b"
+    fi
+else
+    echo "⚠️  Ollama non installé. L'amélioration IA ne sera pas disponible."
+    echo "   Installez-le avec: curl -fsSL https://ollama.ai/install.sh | sh"
+fi
+
 # 1. Démarrer le Backend (Port 8001)
 echo "📦 Lancement du Backend (FastAPI)..."
 cd backend
