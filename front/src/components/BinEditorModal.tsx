@@ -25,6 +25,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [icon, setIcon] = useState('');
   const [isImproving, setIsImproving] = useState(false);
+  const [improvementProgress, setImprovementProgress] = useState(0);
 
   useEffect(() => {
     if (bin) {
@@ -104,6 +105,16 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
     }
 
     setIsImproving(true);
+    setImprovementProgress(0);
+
+    // Simuler la progression pendant que l'IA travaille
+    const progressInterval = setInterval(() => {
+      setImprovementProgress((prev) => {
+        if (prev >= 90) return prev; // Ne jamais dépasser 90% avant la vraie réponse
+        return prev + Math.random() * 15; // Progression aléatoire réaliste
+      });
+    }, 300);
+
     try {
       const itemsText = items.join(', ');
       const result = await apiClient.improveDescription(
@@ -111,11 +122,23 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
         description || itemsText,
         'Description pour un inventaire de composants électroniques'
       );
-      setDescription(result.improved_description);
+      
+      // Animation finale jusqu'à 100%
+      clearInterval(progressInterval);
+      setImprovementProgress(100);
+      
+      // Attendre un peu pour montrer le 100% avant de masquer
+      setTimeout(() => {
+        setDescription(result.improved_description);
+        setIsImproving(false);
+        setImprovementProgress(0);
+      }, 400);
+      
     } catch (error) {
+      clearInterval(progressInterval);
+      setImprovementProgress(0);
       console.error('Erreur lors de l\'amélioration:', error);
       alert('Impossible d\'améliorer la description. Vérifiez qu\'Ollama est en cours d\'exécution avec le modèle llama3.2:1b');
-    } finally {
       setIsImproving(false);
     }
   };
@@ -230,11 +253,35 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 )}
               </button>
             </div>
+            
+            {/* Barre de progression */}
+            {isImproving && (
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                    🤖 Intelligence artificielle en cours...
+                  </span>
+                  <span className="text-xs font-mono text-purple-600 dark:text-purple-400">
+                    {Math.round(improvementProgress)}%
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ease-out"
+                    style={{ width: `${improvementProgress}%` }}
+                  >
+                    <div className="h-full w-full bg-white/20 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <textarea
               className="input w-full min-h-20 resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Cartes de développement avec Wi-Fi/BLE pour projets IoT..."
+              disabled={isImproving}
             />
           </div>
 

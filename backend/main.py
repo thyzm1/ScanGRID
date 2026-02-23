@@ -601,6 +601,7 @@ Règles strictes :
 - Format : Une seule phrase ou deux segments courts séparés par un point
 - Si le contenu est vide ou contradictoire, base-toi uniquement sur le titre
 - N'invente pas de spécifications techniques non fournies
+- Renvoie uniquement la description, sans préambule ni conclusion
 
 Description :"""
 
