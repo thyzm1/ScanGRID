@@ -96,7 +96,8 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const handleRemovePhoto = (index: number) => {
     setPhotos(photos.filter((_, i) => i !== index));
   };
-handleImproveDescription = async () => {
+
+  const handleImproveDescription = async () => {
     if (!title.trim()) {
       alert('Veuillez d\'abord entrer un titre');
       return;
@@ -119,7 +120,6 @@ handleImproveDescription = async () => {
     }
   };
 
-  const 
   const colorPresets = [
     { name: 'Bleu', value: '#3b82f6' },
     { name: 'Vert', value: '#10b981' },
