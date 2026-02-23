@@ -608,27 +608,27 @@ Description :"""
         response = ollama.generate(
             model='llama3.2:1b',
             prompt=prompt,
-            options={{
+            options={
                 'temperature': 0.2,    # Très bas pour rester factuel
                 'num_predict': 40,     # Limite la longueur (économie CPU)
                 'top_p': 0.9           # Diversité contrôlée
-            }}
+            }
         )
         
         improved_description = response['response'].strip()
         
         logger.info(f"✅ Description générée: {improved_description[:50]}...")
         
-        return {{
+        return {
             "improved_description": improved_description,
             "model": "llama3.2:1b"
-        }}
+        }
         
     except Exception as e:
-        logger.error(f"❌ Erreur Ollama: {{str(e)}}")
+        logger.error(f"❌ Erreur Ollama: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de la génération: {{str(e)}}"
+            detail=f"Erreur lors de la génération: {str(e)}"
         )
 
 
