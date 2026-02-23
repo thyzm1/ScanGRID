@@ -1193,8 +1193,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     w: draggedDockBin.width_units, 
                     h: draggedDockBin.depth_units 
                 } : undefined}
-                margin={[6, 6]}
-                containerPadding={[12, 12]}
+                margin={[0, 0]}
+                containerPadding={[0, 0]}
                 useCSSTransforms={true}
                 style={{ 
                   width: GRID_WIDTH, 

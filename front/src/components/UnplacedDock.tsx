@@ -21,7 +21,7 @@ export default function UnplacedDock({
 
   return (
     <div className="absolute right-4 top-20 bottom-20 w-48 z-10 flex flex-col gap-2 pointer-events-none">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col pointer-events-auto h-full max-h-[70vh]">
+      <div className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden flex flex-col pointer-events-auto h-full max-h-[70vh]">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,8 +59,8 @@ export default function UnplacedDock({
                 className={`
                   relative p-3 rounded-lg border transition-all cursor-move group
                   ${isSelected 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500' 
-                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-700'
+                    ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-900/30 ring-1 ring-blue-500 backdrop-blur-sm' 
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 backdrop-blur-sm hover:border-blue-300 dark:hover:border-blue-700 hover:bg-[var(--color-bg-secondary)]/80'
                   }
                 `}
               >

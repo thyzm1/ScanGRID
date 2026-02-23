@@ -57,9 +57,9 @@ export default function DrawerList() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col overflow-hidden">
+    <div className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-xl shadow-sm border border-[var(--color-border)] h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50">
+      <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-bg-secondary)]/50 backdrop-blur-sm">
         <h2 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
           <i className="ri-archive-drawer-line text-blue-500"></i>
           Mes Tiroirs
@@ -84,7 +84,7 @@ export default function DrawerList() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10"
+            className="overflow-hidden border-b border-[var(--color-border)] bg-blue-50/30 dark:bg-blue-900/20 backdrop-blur-sm"
           >
             <div className="p-4 space-y-3">
               <div>
@@ -92,7 +92,7 @@ export default function DrawerList() {
                 <input
                   type="text"
                   placeholder="Ex: Atelier Électronique"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
                   value={newDrawerName}
                   onChange={(e) => setNewDrawerName(e.target.value)}
                   autoFocus
@@ -107,7 +107,7 @@ export default function DrawerList() {
                       type="number"
                       min="1"
                       max="24"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       value={gridWidth}
                       onChange={(e) => setGridWidth(parseInt(e.target.value) || 1)}
                     />
@@ -120,7 +120,7 @@ export default function DrawerList() {
                       type="number"
                       min="1"
                       max="24"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       value={gridDepth}
                       onChange={(e) => setGridDepth(parseInt(e.target.value) || 1)}
                     />
