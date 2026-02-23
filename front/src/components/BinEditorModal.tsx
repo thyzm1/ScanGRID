@@ -175,7 +175,31 @@ handleImproveDescription = async () => {
                 fillRule="evenodd"
                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                 clipRule="evenodd"
-             div className="flex items-center justify-between mb-2">
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {/* Title - First */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Titre <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className="input w-full text-lg"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="ESP32 Dev Boards"
+              required
+            />
+          </div>
+
+          {/* Description - Second */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold">Description</label>
               <button
                 type="button"
@@ -205,31 +229,7 @@ handleImproveDescription = async () => {
                   </>
                 )}
               </button>
-            </div
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Title - First */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">
-              Titre <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className="input w-full text-lg"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="ESP32 Dev Boards"
-              required
-            />
-          </div>
-
-          {/* Description - Second */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Description</label>
+            </div>
             <textarea
               className="input w-full min-h-20 resize-y"
               value={description}
