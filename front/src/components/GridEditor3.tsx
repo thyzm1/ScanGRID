@@ -697,20 +697,24 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     const isDimmed = searchedBinId !== null && !isSearched;
     const isHeight1 = bin.depth_units === 1;
     const is1x1 = bin.width_units === 1 && bin.depth_units === 1;
+    const isEditing = useStore.getState().selectedBin?.bin_id === bin.bin_id && editMode === 'view';
 
     return (
       <motion.div
         key={bin.bin_id}
-        onClick={(e) => handleBinSingleClick(e, bin)}
+        onClick={(e) => !isEditing && handleBinSingleClick(e, bin)}
         onDoubleClick={(e) => {
-          e.stopPropagation();
-          onBinDoubleClick(bin);
+          if (!isEditing) {
+            e.stopPropagation();
+            onBinDoubleClick(bin);
+          }
         }}
         className={`
-          relative h-full rounded-xl overflow-hidden transition-all duration-300
+          relative h-full rounded-2xl overflow-hidden transition-all duration-300
           ${isSelected || isSearched ? 'ring-4 ring-blue-500 ring-opacity-70 shadow-2xl z-10' : 'shadow-lg'}
-          ${editMode === 'view' ? 'cursor-pointer' : 'cursor-move'}
+          ${editMode === 'view' && !isEditing ? 'cursor-pointer' : editMode === 'edit' ? 'cursor-move' : 'cursor-default'}
           ${isDimmed ? 'opacity-20 grayscale-[50%]' : 'opacity-100'}
+          ${isEditing ? 'pointer-events-none' : ''}
           border border-white/10
         `}
         style={{
@@ -730,7 +734,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                </div>
             )}
           <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
-             {bin.content.icon && isHeight1 && <IconDisplay icon={bin.content.icon} className="text-lg" />}
+             {bin.content.icon && isHeight1 && !is1x1 && <IconDisplay icon={bin.content.icon} className="text-lg" />}
             {bin.content.title}
           </div>
           {!isHeight1 && bin.content.description && (
@@ -907,7 +911,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <>
           <button
             onClick={handleAddBin}
-            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1"
+            className="px-3 py-1.5 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -923,7 +927,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     localStorage.setItem('scangrid_clipboard', JSON.stringify(selectedBin));
                     pasteFromClipboard();
                 }}
-                className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1"
+                className="px-3 py-1.5 bg-indigo-500 text-white rounded-xl text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1"
                 title="Dupliquer (Ctrl+D)"
              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
@@ -932,7 +936,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
              <button
                 onClick={() => copyToClipboard(selectedBin)}
-                className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
+                className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
                 title="Copier (Ctrl+C)"
              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -943,7 +947,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
            <button
              onClick={pasteFromClipboard}
-             className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
+             className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
              title="Coller une boîte (Ctrl+V)"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -1189,8 +1193,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     w: draggedDockBin.width_units, 
                     h: draggedDockBin.depth_units 
                 } : undefined}
-                margin={[0, 0]}
-                containerPadding={[0, 0]}
+                margin={[6, 6]}
+                containerPadding={[12, 12]}
                 useCSSTransforms={true}
                 style={{ 
                   width: GRID_WIDTH, 
