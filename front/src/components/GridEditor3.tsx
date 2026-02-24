@@ -1139,16 +1139,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden" 
                     style={{ 
                       width: GRID_WIDTH, 
-                      height: GRID_HEIGHT,
-                      minWidth: GRID_WIDTH,
-                      minHeight: GRID_HEIGHT,
-                      maxWidth: GRID_WIDTH,
-                      maxHeight: GRID_HEIGHT
+                      height: GRID_HEIGHT
                     }}
                   >
               {/* Background Grid Lines */}
               <div className="absolute inset-0 pointer-events-none">
-                <svg width={GRID_WIDTH} height={GRID_HEIGHT} className="absolute inset-0">
+                <svg width={GRID_WIDTH} height={GRID_HEIGHT} className="absolute inset-0 pointer-events-none">
                   <defs>
                     <pattern
                       id="grid-pattern"
@@ -1159,7 +1155,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                       <rect width={BASE_CELL_SIZE} height={BASE_CELL_SIZE} fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-300 dark:text-gray-700" />
                     </pattern>
                   </defs>
-                  <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+                  <rect width={GRID_WIDTH} height={GRID_HEIGHT} fill="url(#grid-pattern)"
+                />
+
                 </svg>
               </div>
 
@@ -1199,11 +1197,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 useCSSTransforms={true}
                 style={{ 
                   width: GRID_WIDTH, 
-                  height: GRID_HEIGHT, 
-                  minWidth: GRID_WIDTH, 
-                  minHeight: GRID_HEIGHT,
-                  maxWidth: GRID_WIDTH,
-                  maxHeight: GRID_HEIGHT
+                  height: GRID_HEIGHT
                 }}
               >
                 {placedBins.map((bin) => (
