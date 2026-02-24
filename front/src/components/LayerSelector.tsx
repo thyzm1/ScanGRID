@@ -104,7 +104,7 @@ const LayerSelector = () => {
   };
 
   return (
-    <div className="w-full max-w-[90vw] sm:max-w-none sm:w-auto">
+    <div className="w-full min-[901px]:w-auto">
       <div className="hidden min-[901px]:flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
         {/* Layer Tabs Container */}
         <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-full px-1">
@@ -178,11 +178,11 @@ const LayerSelector = () => {
       </div>
 
       {/* Mobile layout (<900px): dropdown for layers + compact actions */}
-      <div className="flex min-[901px]:hidden items-center gap-1 p-1 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full">
+      <div className="flex min-[901px]:hidden items-center gap-1 max-[430px]:gap-0.5 p-1 max-[430px]:p-0.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full">
         <select
           value={currentLayerIndex}
           onChange={(e) => setCurrentLayerIndex(parseInt(e.target.value, 10))}
-          className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
+          className="h-9 max-[430px]:h-8 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
         >
           {currentDrawer.layers.map((layer, idx) => (
             <option key={layer.layer_id} value={idx}>
@@ -193,7 +193,7 @@ const LayerSelector = () => {
 
         <button
           onClick={handleAddLayer}
-          className="h-9 w-9 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] text-green-500 hover:text-green-600 hover:bg-green-500/10 transition-colors flex items-center justify-center"
+          className="h-9 w-9 max-[430px]:h-8 max-[430px]:w-8 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] text-green-500 hover:text-green-600 hover:bg-green-500/10 transition-colors flex items-center justify-center"
           title="Ajouter une couche"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +204,7 @@ const LayerSelector = () => {
         {currentDrawer.layers.length > 1 && (
           <button
             onClick={handleDeleteLayer}
-            className="h-9 w-9 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors flex items-center justify-center"
+            className="h-9 w-9 max-[430px]:h-8 max-[430px]:w-8 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors flex items-center justify-center"
             title="Supprimer la couche"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
