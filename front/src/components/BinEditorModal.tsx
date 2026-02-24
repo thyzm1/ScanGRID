@@ -165,7 +165,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <motion.div
@@ -173,7 +173,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[var(--color-bg-secondary)]/95 backdrop-blur-md rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[var(--color-border)]"
+        className="bg-[var(--color-bg-secondary)]/95 backdrop-blur-xl rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[var(--color-border)]"
       >
         {/* Header */}
         <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10">
