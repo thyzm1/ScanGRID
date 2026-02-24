@@ -104,7 +104,7 @@ const LayerSelector = () => {
   };
 
   return (
-    <div className="w-full sm:w-auto">
+    <div className="w-full max-w-[90vw] sm:max-w-none sm:w-auto">
       <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
         
         {/* Layer Tabs Container */}
