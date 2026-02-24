@@ -16,6 +16,8 @@ interface SearchResult {
   };
 }
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const highlightText = (text: string | undefined, query: string) => {
   if (!text || !query.trim()) return text;
   const lowerText = text.toLowerCase();
@@ -31,7 +33,8 @@ const highlightText = (text: string | undefined, query: string) => {
   if (end < text.length) snippet = snippet + '...';
 
   // Highlight the query within the snippet
-  const parts = snippet.split(new RegExp(`(${query})`, 'gi'));
+  const safeQuery = escapeRegExp(query);
+  const parts = snippet.split(new RegExp(`(${safeQuery})`, 'gi'));
   return (
     <span>
       {parts.map((part, i) => 
@@ -62,11 +65,16 @@ export default function SearchBar() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
 
-  const closeAndResetSearch = () => {
-    setIsOpen(false);
+  const resetSearchInputs = () => {
     setQuery('');
     setResults([]);
     setFilterText('');
+    setSelectedCategoryId(null);
+  };
+
+  const closeAndResetSearch = () => {
+    setIsOpen(false);
+    resetSearchInputs();
     setSearchedBinId(null);
   };
 
@@ -161,8 +169,7 @@ export default function SearchBar() {
     setIsOpen(false);
     
     // Clear filters
-    setQuery('');
-    setFilterText('');
+    resetSearchInputs();
     
     if (result.type === 'bin' && result.bin) {
       setTimeout(() => {
@@ -193,13 +200,19 @@ export default function SearchBar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  const hasActiveSearch = query.trim().length > 0 || Boolean(selectedCategoryId);
+
   return (
     <>
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg)] rounded-lg text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors border border-[var(--color-border)]"
+        className={`flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg)] rounded-lg text-sm transition-colors border ${
+          isOpen
+            ? 'text-blue-600 border-blue-500 dark:text-blue-300 dark:border-blue-400'
+            : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] border-[var(--color-border)]'
+        }`}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -257,7 +270,12 @@ export default function SearchBar() {
                 </div>
 
                 <div className="overflow-y-auto p-2">
-                  {results.length === 0 ? (
+                  {!hasActiveSearch ? (
+                    <div className="text-center py-10 text-[var(--color-text-secondary)]">
+                      <p className="font-medium text-sm">Commencez une recherche</p>
+                      <p className="text-xs mt-1">Titre, description, article ou catégorie</p>
+                    </div>
+                  ) : results.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       Aucun résultat trouvé
                     </div>

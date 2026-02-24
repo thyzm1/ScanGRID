@@ -12,6 +12,7 @@ export default function DrawerList() {
   const [gridWidth, setGridWidth] = useState(5);
   const [gridDepth, setGridDepth] = useState(4);
   const [loading, setLoading] = useState(false);
+  const clampUnits = (value: number) => Math.min(24, Math.max(1, value));
 
   const handleCreate = async () => {
     if (!newDrawerName.trim()) return;
@@ -20,8 +21,8 @@ export default function DrawerList() {
     try {
       const request: DrawerCreateRequest = {
         name: newDrawerName,
-        width_units: gridWidth,
-        depth_units: gridDepth,
+        width_units: clampUnits(gridWidth),
+        depth_units: clampUnits(gridDepth),
         layers: [
           {
             z_index: 0,
@@ -109,7 +110,7 @@ export default function DrawerList() {
                       max="24"
                       className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       value={gridWidth}
-                      onChange={(e) => setGridWidth(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setGridWidth(clampUnits(parseInt(e.target.value, 10) || 1))}
                     />
                   </div>
                 </div>
@@ -122,7 +123,7 @@ export default function DrawerList() {
                       max="24"
                       className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       value={gridDepth}
-                      onChange={(e) => setGridDepth(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setGridDepth(clampUnits(parseInt(e.target.value, 10) || 1))}
                     />
                   </div>
                 </div>
@@ -193,7 +194,7 @@ export default function DrawerList() {
 
               <button
                 onClick={(e) => handleDelete(drawer.drawer_id, e)}
-                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                 title="Supprimer"
               >
                 <i className="ri-delete-bin-line text-lg"></i>

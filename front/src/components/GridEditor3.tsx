@@ -270,6 +270,11 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     }
   }, [currentDrawer?.drawer_id, currentLayerIndex]); // Re-center when drawer or layer changes
 
+  // Avoid stale multi-selection when switching drawer/layer
+  useEffect(() => {
+    setSelectedBinIds([]);
+  }, [currentDrawer?.drawer_id, currentLayerIndex]);
+
   const handleRecenter = () => {
     if (transformWrapperRef.current) {
       const wrapper = transformWrapperRef.current;
@@ -697,7 +702,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     const isSelected = selectedBin?.bin_id === bin.bin_id || selectedBinIds.includes(bin.bin_id);
     const isSearched = searchedBinId === bin.bin_id;
     const isDimmed = searchedBinId !== null && !isSearched;
-    const isHeight1 = bin.depth_units === 1;
+    const isHeight1 = bin.height_units === 1;
     const is1x1 = bin.width_units === 1 && bin.depth_units === 1;
     const isEditing = useStore.getState().selectedBin?.bin_id === bin.bin_id && editMode === 'view';
 
@@ -969,7 +974,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
       {/* Unplaced Dock - Right Side */}
       <div className="absolute top-36 sm:top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
-         <div className="pointer-events-auto">
+         <div className="pointer-events-auto h-full">
             <UnplacedDock 
                 unplacedBins={unplacedBins}
                 onBinClick={(bin) => {
@@ -1005,6 +1010,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         style={{ width: '100%', height: '100%', overflow: 'hidden' }}
         onClick={() => {
           setSelectedBin(null);
+          setSelectedBinIds([]);
           setSearchedBinId(null);
         }}
       >
