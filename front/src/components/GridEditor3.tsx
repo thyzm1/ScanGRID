@@ -944,17 +944,19 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 max-[430px]:p-0.5 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={() => setViewFormat('grid')}
-              className={`h-9 px-3 max-[430px]:px-2 rounded-md text-sm max-[430px]:text-xs transition-all ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
               title="Vue Grille"
             >
-              Vue Grille
+              <span>🔲</span>
+              <span className="max-[430px]:hidden">Grille</span>
             </button>
             <button
               onClick={() => setViewFormat('list')}
-              className={`h-9 px-3 max-[430px]:px-2 rounded-md text-sm max-[430px]:text-xs transition-all ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
               title="Vue Liste"
             >
-              Vue Liste
+              <span>📋</span>
+              <span className="max-[430px]:hidden">Liste</span>
             </button>
           </div>
 
@@ -964,15 +966,17 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 max-[430px]:p-0.5 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={() => setEditMode('view')}
-              className={`h-9 px-3 max-[430px]:px-2 rounded-md text-sm max-[430px]:text-xs font-medium transition-all ${editMode === 'view' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base font-medium transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${editMode === 'view' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
             >
-              👁️ Consultation
+              <span>👁️</span>
+              <span className="max-[430px]:hidden">Consultation</span>
             </button>
             <button
               onClick={() => setEditMode('edit')}
-              className={`h-9 px-3 max-[430px]:px-2 rounded-md text-sm max-[430px]:text-xs font-medium transition-all ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base font-medium transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
             >
-              ✏️ Édition
+              <span>✏️</span>
+              <span className="max-[430px]:hidden">Édition</span>
             </button>
           </div>
         </div>
