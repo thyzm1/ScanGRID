@@ -1136,7 +1136,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   contentClass="!w-full !h-full !flex !items-center !justify-center"
                 >
                   <div 
-                    className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden border-8 border-white dark:border-gray-900" 
+                    className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden" 
                     style={{ 
                       width: GRID_WIDTH, 
                       height: GRID_HEIGHT,
