@@ -324,6 +324,52 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             />
           </div>
 
+          {/* Items List - after description */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">Articles contenus</label>
+            <div className="space-y-2">
+              {items.map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-2 bg-[var(--color-bg-secondary)] rounded-lg p-3"
+                >
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span className="flex-1">{item}</span>
+                  <button
+                    onClick={() => handleRemoveItem(index)}
+                    className="p-1 hover:bg-red-500/20 rounded transition-colors text-red-500"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </motion.div>
+              ))}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input flex-1"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+                  placeholder="3x ESP32-WROOM, 1x ESP32-S3..."
+                />
+                <button
+                  onClick={handleAddItem}
+                  className="btn-primary px-4"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Dimensions - New Section */}
           <div>
             <label className="block text-sm font-semibold mb-3">Dimensions (unités Gridfinity)</label>
@@ -391,52 +437,6 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             {/* Icon Picker */}
             <div className="flex-1">
               <IconPicker value={icon} onChange={setIcon} />
-            </div>
-          </div>
-
-          {/* Items List - Fourth */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Articles contenus</label>
-            <div className="space-y-2">
-              {items.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2 bg-[var(--color-bg-secondary)] rounded-lg p-3"
-                >
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span className="flex-1">{item}</span>
-                  <button
-                    onClick={() => handleRemoveItem(index)}
-                    className="p-1 hover:bg-red-500/20 rounded transition-colors text-red-500"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </motion.div>
-              ))}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="input flex-1"
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
-                  placeholder="3x ESP32-WROOM, 1x ESP32-S3..."
-                />
-                <button
-                  onClick={handleAddItem}
-                  className="btn-primary px-4"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
             </div>
           </div>
 
