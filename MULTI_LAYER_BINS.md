@@ -27,17 +27,31 @@ Par exemple, une boîte de hauteur 2 occupera deux couches consécutives (ex: co
 
 ## Migration de la base de données
 
-### Pour une installation existante:
+### Déploiement automatique (recommandé)
+
+La migration est **automatiquement exécutée** lors du déploiement via :
+
+```bash
+./redeploy_full.sh
+```
+
+ou
+
+```bash
+./deploy_raspberry.sh
+```
+
+Les scripts de déploiement incluent maintenant la migration `migrate_height.py` qui ajoute la colonne `height_units` si elle n'existe pas.
+
+### Migration manuelle (si nécessaire)
+
+Si vous devez migrer manuellement une base existante :
 
 ```bash
 cd backend
+source venv/bin/activate  # Activer l'environnement virtuel
 python3 migrate_height.py
 ```
-
-Ce script:
-1. Vérifie si la colonne `height_units` existe déjà
-2. Ajoute la colonne avec valeur par défaut = 1
-3. Met à jour toutes les boîtes existantes avec `height_units = 1`
 
 ### Pour une nouvelle installation:
 

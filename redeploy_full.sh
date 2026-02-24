@@ -89,9 +89,17 @@ fi
 echo "🗄️  Migration de la base de données..."
 env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_categories.py
 if [ $? -eq 0 ]; then
-    echo "✅ Migration réussie"
+    echo "✅ Migration catégories réussie"
 else
-    echo "⚠️  Attention : La migration a peut-être échoué (ou déjà faite)"
+    echo "⚠️  Attention : La migration catégories a peut-être échoué (ou déjà faite)"
+fi
+
+echo "📏 Migration height_units (boîtes multi-couches)..."
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_height.py
+if [ $? -eq 0 ]; then
+    echo "✅ Migration height_units réussie"
+else
+    echo "⚠️  Attention : La migration height_units a peut-être échoué (ou déjà faite)"
 fi
 cd ..
 

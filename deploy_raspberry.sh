@@ -43,6 +43,12 @@ if ! ollama list | grep -q "llama3.2:1b"; then
     ollama pull llama3.2:1b
 fi
 echo "✅ Ollama ready"
+
+# 2.2. Database migrations
+echo "🗄️  Running database migrations..."
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_categories.py
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_height.py
+echo "✅ Migrations complete"
 cd ..
 
 # 3. Build Frontend
