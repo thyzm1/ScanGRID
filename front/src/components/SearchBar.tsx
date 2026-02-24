@@ -62,6 +62,14 @@ export default function SearchBar() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
 
+  const closeAndResetSearch = () => {
+    setIsOpen(false);
+    setQuery('');
+    setResults([]);
+    setFilterText('');
+    setSearchedBinId(null);
+  };
+
   // Fetch categories on mount
   useEffect(() => {
     apiClient.listCategories().then(setCategories).catch(console.error);
@@ -69,11 +77,16 @@ export default function SearchBar() {
 
   // Update global filter
   useEffect(() => {
-    setFilterText(query);
-  }, [query, setFilterText]);
+    setFilterText(isOpen ? query : '');
+  }, [isOpen, query, setFilterText]);
 
   // Search logic
   useEffect(() => {
+    if (!isOpen) {
+      setResults([]);
+      return;
+    }
+
     // If no query and no category, clear results
     if (!query.trim() && !selectedCategoryId) {
       setResults([]);
@@ -138,7 +151,7 @@ export default function SearchBar() {
     });
 
     setResults(searchResults.slice(0, 50));
-  }, [query, drawers, selectedCategoryId]);
+  }, [isOpen, query, drawers, selectedCategoryId]);
 
   const handleSelectResult = (result: SearchResult) => {
     setCurrentDrawer(result.drawer);
@@ -166,15 +179,19 @@ export default function SearchBar() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen((prev) => !prev);
+        if (isOpen) {
+          closeAndResetSearch();
+        } else {
+          setIsOpen(true);
+        }
       }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
+      if (e.key === 'Escape' && isOpen) {
+        closeAndResetSearch();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isOpen]);
 
   return (
     <>
@@ -201,7 +218,7 @@ export default function SearchBar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] flex items-start justify-center pt-24 bg-black/50 backdrop-blur-sm p-4"
-              onClick={() => setIsOpen(false)}
+              onClick={closeAndResetSearch}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -234,7 +251,7 @@ export default function SearchBar() {
                      ))}
                    </select>
 
-                   <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-[var(--color-text)]">
+                   <button onClick={closeAndResetSearch} className="text-gray-400 hover:text-[var(--color-text)]">
                     <kbd className="text-xs border border-gray-600 rounded px-1">Esc</kbd>
                    </button>
                 </div>

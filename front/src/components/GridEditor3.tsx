@@ -1209,7 +1209,16 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 }}
               >
                 {placedBins.map((bin) => (
-                  <div key={bin.bin_id}>
+                  <div
+                    key={bin.bin_id}
+                    className={
+                      selectedBin?.bin_id === bin.bin_id ||
+                      selectedBinIds.includes(bin.bin_id) ||
+                      searchedBinId === bin.bin_id
+                        ? 'scangrid-grid-item-highlighted'
+                        : ''
+                    }
+                  >
                     {renderBin(bin)}
                   </div>
                 ))}
