@@ -944,19 +944,21 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 max-[430px]:p-0.5 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={() => setViewFormat('grid')}
-              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 w-9 rounded-md text-base transition-all flex items-center justify-center ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
               title="Vue Grille"
             >
-              <span>🔲</span>
-              <span className="max-[430px]:hidden">Grille</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M120-520v-320h320v320H120Zm0 400v-320h320v320H120Zm400-400v-320h320v320H520Zm0 400v-320h320v320H520ZM200-600h160v-160H200v160Zm400 0h160v-160H600v160Zm0 400h160v-160H600v160Zm-400 0h160v-160H200v160Zm400-400Zm0 240Zm-240 0Zm0-240Z" />
+              </svg>
             </button>
             <button
               onClick={() => setViewFormat('list')}
-              className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              className={`h-9 w-9 rounded-md text-base transition-all flex items-center justify-center ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
               title="Vue Liste"
             >
-              <span>📋</span>
-              <span className="max-[430px]:hidden">Liste</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z" />
+              </svg>
             </button>
           </div>
 
@@ -968,14 +970,18 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
               onClick={() => setEditMode('view')}
               className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base font-medium transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${editMode === 'view' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
             >
-              <span>👁️</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z" />
+              </svg>
               <span className="max-[430px]:hidden">Consultation</span>
             </button>
             <button
               onClick={() => setEditMode('edit')}
               className={`h-9 px-3 max-[430px]:w-9 max-[430px]:px-0 rounded-md text-sm max-[430px]:text-base font-medium transition-all flex items-center justify-center gap-1 max-[430px]:gap-0 ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
             >
-              <span>✏️</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
+              </svg>
               <span className="max-[430px]:hidden">Édition</span>
             </button>
           </div>
@@ -1031,7 +1037,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
-      <div className={`absolute ${editMode === 'edit' ? 'top-[6.2rem]' : 'top-[4.8rem]'} left-1/2 -translate-x-1/2 min-[901px]:top-20 min-[901px]:left-4 min-[901px]:translate-x-0 z-20 flex flex-col gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[901px]:w-auto min-[901px]:max-w-none`}>
+      <div className={`absolute ${editMode === 'edit' ? 'top-[6.2rem]' : 'top-[4.8rem]'} left-1/2 -translate-x-1/2 min-[901px]:top-4 min-[901px]:left-4 min-[901px]:translate-x-0 z-20 flex flex-col gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[901px]:w-auto min-[901px]:max-w-none`}>
         <div className="pointer-events-auto">
           <LayerSelector />
         </div>
