@@ -165,7 +165,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
   return (
     <div
-      className="fixed inset-0 bg-gray-100 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-gray-100/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <motion.div
