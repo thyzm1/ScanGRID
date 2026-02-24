@@ -33,6 +33,8 @@ interface GridEditor3Props {
 
 const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
 const GRID_OUTER_MARGIN_PX = 4;
+const PAN_CLICK_SUPPRESS_MS = 180;
+const PAN_MOVEMENT_THRESHOLD = 1;
 
 export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor3Props) {
   const {
@@ -52,6 +54,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const [scale, setScale] = useState(1);
   const transformWrapperRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
+  const panStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickUntilRef = useRef(0);
   const [draggedDockBin, setDraggedDockBin] = useState<Bin | null>(null);
   const [viewFormat, setViewFormat] = useState<'grid' | 'list'>('grid'); // New state for list view
 
@@ -281,6 +285,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       wrapper.centerView(1, 300, 'easeOut');
     }
   };
+
+  const shouldIgnoreClickAfterPan = () => Date.now() < suppressClickUntilRef.current;
 
   if (!currentDrawer) return null;
 
@@ -662,6 +668,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   // Handle bin single click
   const handleBinSingleClick = (e: React.MouseEvent, bin: Bin) => {
     e.stopPropagation();
+
+    if (shouldIgnoreClickAfterPan()) {
+      return;
+    }
     
     // Prevent click if dragging just finished
     if (isDraggingRef.current) {
@@ -711,6 +721,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         key={bin.bin_id}
         onClick={(e) => !isEditing && handleBinSingleClick(e, bin)}
         onDoubleClick={(e) => {
+          if (shouldIgnoreClickAfterPan()) {
+            return;
+          }
           if (!isEditing) {
             e.stopPropagation();
             onBinDoubleClick(bin);
@@ -1009,6 +1022,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         className="flex-1 relative bg-gray-100 dark:bg-gray-900" 
         style={{ width: '100%', height: '100%', overflow: 'hidden' }}
         onClick={() => {
+          if (shouldIgnoreClickAfterPan()) {
+            return;
+          }
           setSelectedBin(null);
           setSelectedBinIds([]);
           setSearchedBinId(null);
@@ -1134,6 +1150,24 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             }}
             onTransformed={(ref) => {
               setScale(ref.state.scale);
+            }}
+            onPanningStart={(ref) => {
+              panStartPositionRef.current = {
+                x: ref.state.positionX,
+                y: ref.state.positionY,
+              };
+            }}
+            onPanningStop={(ref) => {
+              const start = panStartPositionRef.current;
+              if (start) {
+                const moved =
+                  Math.abs(ref.state.positionX - start.x) +
+                  Math.abs(ref.state.positionY - start.y);
+                if (moved > PAN_MOVEMENT_THRESHOLD) {
+                  suppressClickUntilRef.current = Date.now() + PAN_CLICK_SUPPRESS_MS;
+                }
+              }
+              panStartPositionRef.current = null;
             }}
           >
             {() => (

@@ -13,7 +13,7 @@ interface BinEditorModalProps {
 }
 
 export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalProps) {
-  const { currentDrawer, currentLayerIndex, categories } = useStore();
+  const { currentDrawer, currentLayerIndex, categories, setCategories } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<string[]>([]);
@@ -29,6 +29,36 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [heightUnits, setHeightUnits] = useState(1);
   const [isImproving, setIsImproving] = useState(false);
   const [improvementProgress, setImprovementProgress] = useState(0);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Ensure categories are refreshed whenever the bin editor opens.
+  useEffect(() => {
+    if (!bin) return;
+
+    let cancelled = false;
+
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const data = await apiClient.listCategories();
+        if (!cancelled) {
+          setCategories(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories for bin editor:', error);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingCategories(false);
+        }
+      }
+    };
+
+    fetchCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bin?.bin_id, setCategories]);
 
   useEffect(() => {
     if (bin) {
@@ -345,8 +375,11 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 className="input w-full"
                 value={categoryId || ''}
                 onChange={(e) => setCategoryId(e.target.value || null)}
+                disabled={isLoadingCategories}
               >
-                <option value="">Aucune</option>
+                <option value="">
+                  {isLoadingCategories ? 'Chargement des catégories...' : 'Aucune'}
+                </option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
