@@ -916,8 +916,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Top Center (Mobile) / Top Right (Desktop) */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 min-[901px]:top-4 min-[901px]:left-auto min-[901px]:right-4 min-[901px]:translate-x-0 z-20 flex flex-col items-center min-[901px]:items-end gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[901px]:w-max min-[901px]:max-w-none">
-        <div className="flex items-center gap-2 max-[430px]:gap-1 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 max-[430px]:p-1 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto w-full min-[901px]:w-auto overflow-x-auto custom-scrollbar">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 min-[1024px]:top-4 min-[1024px]:left-auto min-[1024px]:right-4 min-[1024px]:translate-x-0 z-20 flex flex-col items-stretch min-[1024px]:items-end gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[1024px]:w-max min-[1024px]:max-w-none">
+        <div className="flex items-center justify-between min-[1024px]:justify-start gap-2 max-[430px]:gap-1 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 max-[430px]:p-1 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto w-full min-[1024px]:w-auto overflow-x-auto custom-scrollbar">
           {/* Undo/Redo */}
           <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 max-[430px]:p-0.5 border border-[var(--color-border)] h-11 shrink-0">
             <button
@@ -989,7 +989,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
         {/* Floating Action Buttons */}
         {editMode === 'edit' && (
-          <div className="flex gap-2 max-[430px]:gap-1 pointer-events-auto w-full min-[901px]:w-auto overflow-x-auto custom-scrollbar justify-start min-[901px]:justify-end px-0.5">
+          <div className="flex gap-2 max-[430px]:gap-1 pointer-events-auto w-full min-[1024px]:w-auto overflow-x-auto custom-scrollbar justify-between min-[1024px]:justify-end px-0.5">
             <button
               onClick={handleAddBin}
               className="h-9 px-3 max-[430px]:px-2 bg-blue-500 text-white rounded-lg text-sm max-[430px]:text-xs font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1 max-[430px]:gap-0.5 shrink-0"
@@ -1037,7 +1037,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
-      <div className={`absolute ${editMode === 'edit' ? 'top-[6.2rem]' : 'top-[4.8rem]'} left-1/2 -translate-x-1/2 min-[901px]:top-4 min-[901px]:left-4 min-[901px]:translate-x-0 z-20 flex flex-col gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[901px]:w-auto min-[901px]:max-w-none`}>
+      <div className={`absolute ${editMode === 'edit' ? 'top-[6.2rem]' : 'top-[4.8rem]'} left-1/2 -translate-x-1/2 min-[1024px]:top-4 min-[1024px]:left-4 min-[1024px]:translate-x-0 z-20 flex flex-col gap-2 max-[430px]:gap-1.5 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[431px]:w-[calc(100%-1rem)] min-[431px]:max-w-[calc(100%-1rem)] min-[1024px]:w-auto min-[1024px]:max-w-none`}>
         <div className="pointer-events-auto">
           <LayerSelector />
         </div>

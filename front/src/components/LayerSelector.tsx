@@ -104,8 +104,8 @@ const LayerSelector = () => {
   };
 
   return (
-    <div className="w-full min-[901px]:w-auto">
-      <div className="hidden min-[901px]:flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
+    <div className="w-full min-[1024px]:w-auto">
+      <div className="hidden min-[1024px]:flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
         {/* Layer Tabs Container */}
         <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-full px-1">
           <AnimatePresence mode='popLayout'>
@@ -177,8 +177,8 @@ const LayerSelector = () => {
         </div>
       </div>
 
-      {/* Mobile layout (<900px): dropdown for layers + compact actions */}
-      <div className="flex min-[901px]:hidden items-center gap-1 max-[430px]:gap-0.5 p-1 max-[430px]:p-0.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full">
+      {/* Mobile/tablet layout (<1024px): dropdown for layers + compact actions */}
+      <div className="flex min-[1024px]:hidden items-center gap-1 max-[430px]:gap-0.5 p-1 max-[430px]:p-0.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full">
         <select
           value={currentLayerIndex}
           onChange={(e) => setCurrentLayerIndex(parseInt(e.target.value, 10))}
