@@ -35,6 +35,19 @@ const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
 const GRID_OUTER_MARGIN_PX = 4;
 const PAN_CLICK_SUPPRESS_MS = 180;
 const PAN_MOVEMENT_THRESHOLD = 1;
+const HISTORY_LIMIT = 100;
+
+const cloneBins = (bins: Bin[]): Bin[] =>
+  bins.map((bin) => ({
+    ...bin,
+    content: {
+      ...bin.content,
+      items: [...(bin.content.items || [])],
+      photos: [...(bin.content.photos || [])],
+    },
+  }));
+
+const binsToHistoryKey = (bins: Bin[]) => JSON.stringify(bins);
 
 export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor3Props) {
   const {
@@ -65,6 +78,11 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   // Undo/Redo History (simple stack for current layer bins)
   const [history, setHistory] = useState<Bin[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyRef = useRef<Bin[][]>([]);
+  const historyIndexRef = useRef(-1);
+  const isApplyingHistoryRef = useRef(false);
+  const activeHistoryLayerKeyRef = useRef<string | null>(null);
+  const lastHistorySnapshotKeyRef = useRef('');
 
   // Prevent native browser pinch-to-zoom on the grid container
   useEffect(() => {
@@ -135,49 +153,98 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
 
   // History Management
-  const addToHistory = (bins: Bin[]) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(bins);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  };
-  
-  const handleUndo = async () => {
-    if (!currentDrawer || historyIndex <= 0) return;
-    const prevBins = history[historyIndex - 1];
-    setHistoryIndex(historyIndex - 1);
-    
-    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
-        idx === currentLayerIndex ? { ...layer, bins: prevBins } : layer
-    );
-    setCurrentDrawer({ ...currentDrawer, layers: updatedLayers }, true);
-  };
+  const commitHistoryState = useCallback((nextHistory: Bin[][], nextIndex: number) => {
+    historyRef.current = nextHistory;
+    historyIndexRef.current = nextIndex;
+    setHistory(nextHistory);
+    setHistoryIndex(nextIndex);
+  }, []);
 
-  const handleRedo = () => {
-    if (!currentDrawer || historyIndex >= history.length - 1) return;
-    const nextBins = history[historyIndex + 1];
-    setHistoryIndex(historyIndex + 1);
-    
-    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
-        idx === currentLayerIndex ? { ...layer, bins: nextBins } : layer
-    );
-    setCurrentDrawer({ ...currentDrawer, layers: updatedLayers }, true);
-  };
-  
-  // Sync history on layer change or initial load
+  const pushHistorySnapshot = useCallback(
+    (bins: Bin[]) => {
+      const snapshot = cloneBins(bins);
+      const snapshotKey = binsToHistoryKey(snapshot);
+      if (snapshotKey === lastHistorySnapshotKeyRef.current) {
+        return;
+      }
+
+      const truncatedHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+      const nextHistory = [...truncatedHistory, snapshot].slice(-HISTORY_LIMIT);
+      const nextIndex = nextHistory.length - 1;
+      lastHistorySnapshotKeyRef.current = snapshotKey;
+      commitHistoryState(nextHistory, nextIndex);
+    },
+    [commitHistoryState]
+  );
+
+  const applySnapshotToCurrentLayer = useCallback(
+    (binsSnapshot: Bin[]) => {
+      const latestState = useStore.getState();
+      const latestDrawer = latestState.currentDrawer;
+      const latestLayerIndex = latestState.currentLayerIndex;
+      if (!latestDrawer?.layers[latestLayerIndex]) return;
+
+      const snapshot = cloneBins(binsSnapshot);
+      isApplyingHistoryRef.current = true;
+      lastHistorySnapshotKeyRef.current = binsToHistoryKey(snapshot);
+
+      const updatedLayers = latestDrawer.layers.map((layer, idx) =>
+        idx === latestLayerIndex ? { ...layer, bins: snapshot } : layer
+      );
+      setCurrentDrawer({ ...latestDrawer, layers: updatedLayers }, true);
+    },
+    [setCurrentDrawer]
+  );
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    const nextIndex = historyIndexRef.current - 1;
+    const snapshot = historyRef.current[nextIndex];
+    if (!snapshot) return;
+
+    historyIndexRef.current = nextIndex;
+    setHistoryIndex(nextIndex);
+    applySnapshotToCurrentLayer(snapshot);
+  }, [applySnapshotToCurrentLayer]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    const nextIndex = historyIndexRef.current + 1;
+    const snapshot = historyRef.current[nextIndex];
+    if (!snapshot) return;
+
+    historyIndexRef.current = nextIndex;
+    setHistoryIndex(nextIndex);
+    applySnapshotToCurrentLayer(snapshot);
+  }, [applySnapshotToCurrentLayer]);
+
+  // Reset history when layer changes
   useEffect(() => {
-    if (currentDrawer?.layers[currentLayerIndex]) {
-        // Only add if different from last history
-        const currentBins = currentDrawer.layers[currentLayerIndex].bins;
-        if (history.length === 0 || JSON.stringify(history[historyIndex]) !== JSON.stringify(currentBins)) {
-             // Initial load or external change
-             if (history.length === 0) {
-                 setHistory([currentBins]);
-                 setHistoryIndex(0);
-             }
-        }
+    if (!currentDrawer?.layers[currentLayerIndex]) return;
+
+    const layer = currentDrawer.layers[currentLayerIndex];
+    const layerKey = `${currentDrawer.drawer_id}:${layer.layer_id}`;
+    if (activeHistoryLayerKeyRef.current === layerKey) return;
+
+    activeHistoryLayerKeyRef.current = layerKey;
+    isApplyingHistoryRef.current = false;
+
+    const initialSnapshot = cloneBins(layer.bins);
+    lastHistorySnapshotKeyRef.current = binsToHistoryKey(initialSnapshot);
+    commitHistoryState([initialSnapshot], 0);
+  }, [currentDrawer, currentLayerIndex, commitHistoryState]);
+
+  // Record every bins mutation in current layer
+  useEffect(() => {
+    if (!currentDrawer?.layers[currentLayerIndex]) return;
+
+    if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+      return;
     }
-  }, [currentDrawer?.layers[currentLayerIndex], currentLayerIndex]);
+
+    pushHistorySnapshot(currentDrawer.layers[currentLayerIndex].bins);
+  }, [currentDrawer?.layers[currentLayerIndex]?.bins, currentLayerIndex, pushHistorySnapshot]);
   
   // Helper to create bin (shared logic)
   const createNewBin = async (binData: any) => {
@@ -187,9 +254,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       const optimisticBin: Bin = { bin_id: tempId, ...binData };
       
       const latestStateBefore = useStore.getState();
-      const currentBins = latestStateBefore.currentDrawer?.layers[currentLayerIndex].bins || [];
-      addToHistory([...currentBins, optimisticBin]);
-
       const updatedLayers = latestStateBefore.currentDrawer?.layers.map((layer, idx) =>
         idx === currentLayerIndex ? { ...layer, bins: [...layer.bins, optimisticBin] } : layer
       ) || [];
@@ -262,7 +326,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editMode, selectedBin, selectedBinIds, historyIndex, history]); // Dependencies
+  }, [editMode, selectedBin, selectedBinIds, handleUndo, handleRedo]); // Dependencies
 
   // Center grid logic
   useEffect(() => {
@@ -846,8 +910,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Top Center (Mobile) / Top Right (Desktop) */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-20 flex flex-col items-center sm:items-end gap-2 pointer-events-none w-max">
-        <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto transition-all">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 sm:top-4 sm:left-auto sm:right-4 sm:translate-x-0 z-20 flex flex-col items-center sm:items-end gap-2 pointer-events-none w-[calc(100%-0.75rem)] sm:w-max max-w-[calc(100%-0.75rem)]">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1 sm:gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1 sm:p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto transition-all w-full sm:w-auto">
         
         {/* Undo/Redo */}
         <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
@@ -869,7 +933,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
              </button>
         </div>
 
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
         {/* View Options */}
         <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
@@ -893,40 +957,40 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             </button>
         </div>
         
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
         <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1">
           <button
             onClick={() => setEditMode('view')}
             className={`
-              px-3 py-1.5 rounded-md text-sm font-medium transition-all
+              px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all
               ${editMode === 'view' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-600 dark:text-gray-400'}
             `}
           >
-            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 inline sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            Consultation
+            <span className="hidden sm:inline">Consultation</span>
           </button>
           <button
             onClick={() => setEditMode('edit')}
             className={`
-              px-3 py-1.5 rounded-md text-sm font-medium transition-all
+              px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all
               ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-600 dark:text-gray-400'}
             `}
           >
-            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 inline sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Édition
+            <span className="hidden sm:inline">Édition</span>
           </button>
         </div>
 
       </div>
 
       {/* Floating Action Buttons (Secondary Row) */}
-      <div className="flex gap-2 pointer-events-auto">
+      <div className="flex gap-2 pointer-events-auto w-full sm:w-auto overflow-x-auto custom-scrollbar px-1 sm:px-0 pb-1 sm:pb-0">
         {editMode === 'edit' && (
           <>
           <button
@@ -979,14 +1043,14 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
-      <div className="absolute top-28 left-1/2 -translate-x-1/2 sm:top-4 sm:left-4 sm:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-max">
+      <div className="absolute top-[5.2rem] left-1/2 -translate-x-1/2 sm:top-4 sm:left-4 sm:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-[calc(100%-0.75rem)] sm:w-auto max-w-[calc(100%-0.75rem)]">
         <div className="pointer-events-auto">
           <LayerSelector />
         </div>
       </div>
 
       {/* Unplaced Dock - Right Side */}
-      <div className="absolute top-36 sm:top-20 right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+      <div className="absolute top-[9.25rem] sm:top-20 right-2 sm:right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
          <div className="pointer-events-auto h-full">
             <UnplacedDock 
                 unplacedBins={unplacedBins}
@@ -1033,8 +1097,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         {viewFormat === 'list' ? (
            <div className="w-full h-full overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
              <div className="max-w-5xl mx-auto">
-               <div className="flex items-center justify-between mb-6">
-                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Liste des Boîtes - {currentLayer.layer_id}</h2>
+               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 sm:mb-6">
+                 <h2 className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Liste des Boîtes - {currentLayer.layer_id}</h2>
                  <span className="text-sm text-gray-500">{placedBins.length} éléments</span>
                </div>
                

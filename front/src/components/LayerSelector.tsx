@@ -104,11 +104,11 @@ const LayerSelector = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl pointer-events-auto transition-all hover:scale-[1.02]">
+    <div className="w-full sm:w-auto">
+      <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
         
         {/* Layer Tabs Container */}
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[60vw] sm:max-w-none px-1 pb-1">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-full px-1">
           <AnimatePresence mode='popLayout'>
           {currentDrawer.layers.map((layer, idx) => {
              const isActive = idx === currentLayerIndex;
@@ -121,22 +121,22 @@ const LayerSelector = () => {
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={() => setCurrentLayerIndex(idx)}
                 className={`
-                  relative px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2
+                  relative px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2
                   ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      ? 'bg-indigo-500 text-white shadow-sm'
+                      : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
                   }
                 `}
               > 
                 <span className="flex items-center justify-center w-4 h-4 rounded-full bg-white/20 text-[10px] shrink-0">
                   {idx + 1}
                 </span>
-                <span className={`hidden sm:inline ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                <span className={`hidden md:inline ${isActive ? 'opacity-100' : 'opacity-70'}`}>
                   Couche
                 </span>
                 {layer.bins.length > 0 && (
-                   <span className={`text-[10px] px-1 rounded-full shrink-0 ${isActive ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-800'} ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                   <span className={`text-[10px] px-1 rounded-full shrink-0 ${isActive ? 'bg-indigo-600 text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]'}`}>
                      {layer.bins.length}
                    </span>
                 )}
@@ -146,15 +146,15 @@ const LayerSelector = () => {
           </AnimatePresence>
         </div>
 
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 shrink-0"></div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] shrink-0">
             <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleAddLayer}
-                className="p-1.5 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors"
+                className="p-1.5 rounded-md text-green-500 hover:text-green-600 hover:bg-green-500/10 transition-colors"
                 title="Ajouter une couche"
             >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +167,7 @@ const LayerSelector = () => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleDeleteLayer}
-                className="p-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
+                className="p-1.5 rounded-md text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
                 title="Supprimer la couche"
                 >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

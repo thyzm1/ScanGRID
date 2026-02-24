@@ -20,7 +20,7 @@ export default function UnplacedDock({
   if (unplacedBins.length === 0) return null;
 
   return (
-    <div className="w-48 h-full z-10 flex flex-col gap-2 pointer-events-none">
+    <div className="w-36 sm:w-48 h-full z-10 flex flex-col gap-2 pointer-events-none">
       <div className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden flex flex-col pointer-events-auto h-full">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -70,7 +70,7 @@ export default function UnplacedDock({
                   style={{ backgroundColor: bin.color || '#3b82f6' }}
                 />
                 <div className="pl-2">
-                  <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                  <div className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
                     {bin.content.title}
                   </div>
                   {bin.content.description && (
