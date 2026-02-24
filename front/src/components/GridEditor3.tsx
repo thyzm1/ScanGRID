@@ -823,15 +823,17 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                  <IconDisplay icon={bin.content.icon} />
                </div>
             )}
-          <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight z-10 flex items-center gap-1`}>
-             {bin.content.icon && isHeight1 && !is1x1 && <IconDisplay icon={bin.content.icon} className="text-lg" />}
-            {bin.content.title}
-          </div>
-          {!isHeight1 && bin.content.description && (
-            <div className="text-[10px] sm:text-xs opacity-90 line-clamp-1 sm:line-clamp-2 mb-1 sm:mb-2 leading-tight hidden sm:block">
-              {bin.content.description}
+          <div className="relative z-10 flex-1 flex flex-col justify-center">
+            <div className={`font-semibold ${isHeight1 ? 'text-xs line-clamp-1' : 'text-xs sm:text-sm mb-0.5 sm:mb-1 line-clamp-1 sm:line-clamp-2'} leading-tight flex items-center gap-1`}>
+              {bin.content.icon && isHeight1 && !is1x1 && <IconDisplay icon={bin.content.icon} className="text-lg" />}
+              {bin.content.title}
             </div>
-          )}
+            {!isHeight1 && bin.content.description && (
+              <div className="text-[10px] sm:text-xs opacity-90 line-clamp-1 sm:line-clamp-2 mb-1 sm:mb-2 leading-tight hidden sm:block">
+                {bin.content.description}
+              </div>
+            )}
+          </div>
 
         {/* isHeight1 && bin.content.items && bin.content.items.length > 0 && (
             <div className="text-[10px] sm:text-xs opacity-80 mt-auto truncate mb-6">
