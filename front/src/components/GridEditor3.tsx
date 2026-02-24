@@ -517,6 +517,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       y_grid: y,
       width_units: 1, // Explicit 1
       depth_units: 1, // Explicit 1
+      height_units: 1, // Default height
       color: getRandomColor(),
       content: {
         title: 'Nouvelle boîte',

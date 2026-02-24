@@ -73,6 +73,7 @@ class Bin(Base):
     y_grid: Mapped[int] = mapped_column(Integer, nullable=False)
     width_units: Mapped[int] = mapped_column(Integer, nullable=False)
     depth_units: Mapped[int] = mapped_column(Integer, nullable=False)
+    height_units: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     content: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, default=lambda: {"title": "Nouvelle boîte"})
     color: Mapped[Optional[str]] = mapped_column(String, nullable=True, default="#3b82f6")
     is_hole: Mapped[Optional[bool]] = mapped_column(Integer, nullable=True, default=False)

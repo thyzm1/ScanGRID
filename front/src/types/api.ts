@@ -32,6 +32,7 @@ export interface Bin {
   y_grid: number;
   width_units: number;
   depth_units: number;
+  height_units: number; // Number of vertical layers occupied
   content: BinContent;
   color?: string;
   is_hole?: boolean;
@@ -63,6 +64,7 @@ export interface BinCreateRequest {
   y_grid: number;
   width_units: number;
   depth_units: number;
+  height_units: number;
   content: BinContent;
   color?: string;
   is_hole?: boolean;
@@ -85,6 +87,7 @@ export interface BinUpdateRequest {
   y_grid?: number;
   width_units?: number;
   depth_units?: number;
+  height_units?: number;
   content?: Partial<BinContent>;
   color?: string;
   is_hole?: boolean;
@@ -127,4 +130,5 @@ export interface BinFormData {
   y_grid: number;
   width_units: number;
   depth_units: number;
+  height_units: number;
 }

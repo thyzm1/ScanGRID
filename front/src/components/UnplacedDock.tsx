@@ -80,7 +80,7 @@ export default function UnplacedDock({
                   <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400">
                     <span className="flex items-center gap-1">
                       <IconDisplay icon={bin.content.icon || 'ri-box-3-line'} />
-                      {bin.width_units}x{bin.depth_units}
+                      {bin.width_units}×{bin.depth_units}{bin.height_units > 1 ? `×${bin.height_units}` : ''}
                     </span>
                     {bin.content.items && bin.content.items.length > 0 && (
                       <span className="flex items-center gap-1">

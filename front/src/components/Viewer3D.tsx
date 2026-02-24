@@ -15,13 +15,15 @@ interface BinMeshProps {
 }
 
 function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
+  const binHeight = (bin.height_units || 1) * BIN_HEIGHT;
+  
   return (
     <group>
       {/* Main bin body with rounded edges */}
       <group
         position={[
           bin.x_grid * GRID_CELL_SIZE + (bin.width_units * GRID_CELL_SIZE) / 2,
-          layerIndex * BIN_HEIGHT + BIN_HEIGHT / 2,
+          layerIndex * BIN_HEIGHT + binHeight / 2,
           bin.y_grid * GRID_CELL_SIZE + (bin.depth_units * GRID_CELL_SIZE) / 2,
         ]}
         onClick={(e) => {
@@ -32,7 +34,7 @@ function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
         <RoundedBox
           args={[
             bin.width_units * GRID_CELL_SIZE - 0.01,
-            BIN_HEIGHT - 0.01,
+            binHeight - 0.01,
             bin.depth_units * GRID_CELL_SIZE - 0.01,
           ]}
           radius={0.02}
@@ -54,7 +56,7 @@ function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
       <Text
         position={[
           bin.x_grid * GRID_CELL_SIZE + (bin.width_units * GRID_CELL_SIZE) / 2,
-          layerIndex * BIN_HEIGHT + BIN_HEIGHT + 0.01,
+          layerIndex * BIN_HEIGHT + binHeight + 0.01,
           bin.y_grid * GRID_CELL_SIZE + (bin.depth_units * GRID_CELL_SIZE) / 2,
         ]}
         rotation={[-Math.PI / 2, 0, 0]}

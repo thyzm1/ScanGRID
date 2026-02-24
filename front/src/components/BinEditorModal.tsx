@@ -24,6 +24,9 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [icon, setIcon] = useState('');
+  const [widthUnits, setWidthUnits] = useState(1);
+  const [depthUnits, setDepthUnits] = useState(1);
+  const [heightUnits, setHeightUnits] = useState(1);
   const [isImproving, setIsImproving] = useState(false);
   const [improvementProgress, setImprovementProgress] = useState(0);
 
@@ -35,6 +38,9 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       setPhotos(bin.content.photos || []);
       setColor(bin.color || '#3b82f6');
       setCategoryId(bin.category_id || null);
+      setWidthUnits(bin.width_units || 1);
+      setDepthUnits(bin.depth_units || 1);
+      setHeightUnits(bin.height_units || 1);
       // If bin.content.icon exists, use it.
       // Note: we need to update types/api.ts to include icon in BinContent if not already there.
       // But assuming it is or allows extra props.
@@ -71,6 +77,9 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       content: updatedContent,
       category_id: categoryId || undefined,
       color,
+      width_units: widthUnits,
+      depth_units: depthUnits,
+      height_units: heightUnits,
       layer_id: selectedLayerId || undefined
     });
     onClose();
@@ -164,7 +173,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[var(--color-border)]"
+        className="bg-[var(--color-bg-secondary)]/95 backdrop-blur-xl rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[var(--color-border)]"
       >
         {/* Header */}
         <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10">
@@ -185,7 +194,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             <div>
               <h2 className="text-2xl font-bold">Éditer la boîte</h2>
               <p className="text-sm text-[var(--color-text-secondary)]">
-                Position ({bin.x_grid}, {bin.y_grid}) • {bin.width_units}×{bin.depth_units} unités
+                Position ({bin.x_grid}, {bin.y_grid}) • {widthUnits}×{depthUnits}×{heightUnits} unités
               </p>
             </div>
           </div>
@@ -285,9 +294,51 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             />
           </div>
 
+          {/* Dimensions - New Section */}
+          <div>
+            <label className="block text-sm font-semibold mb-3">Dimensions (unités Gridfinity)</label>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Largeur</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  className="input w-full text-center font-mono"
+                  value={widthUnits}
+                  onChange={(e) => setWidthUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Profondeur</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  className="input w-full text-center font-mono"
+                  value={depthUnits}
+                  onChange={(e) => setDepthUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Hauteur (couches)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  className="input w-full text-center font-mono"
+                  value={heightUnits}
+                  onChange={(e) => setHeightUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-2">
+              💡 Une boîte de hauteur 2 occupera 2 couches verticalement
+            </p>
+          </div>
+
            {/* Category & Icon - Third */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Category */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{/* Category */}
             <div>
               <label className="block text-sm font-semibold mb-2">Catégorie</label>
               <select

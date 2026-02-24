@@ -38,6 +38,7 @@ class BinBase(BaseModel):
     y_grid: int = Field(..., ge=-1, description="Coordonnée Y dans la grille (-1 si en attente)")
     width_units: int = Field(..., ge=1, description="Largeur en unités Gridfinity")
     depth_units: int = Field(..., ge=1, description="Profondeur en unités Gridfinity")
+    height_units: int = Field(1, ge=1, description="Hauteur en unités Gridfinity (nombre de couches occupées)")
     content: BinContentSchema = Field(..., description="Contenu structuré de la boîte")
     color: Optional[str] = Field("#3b82f6", description="Couleur de la boîte (hex)")
     is_hole: Optional[bool] = Field(False, description="Si c'est un trou")
@@ -55,6 +56,7 @@ class BinUpdate(BaseModel):
     y_grid: Optional[int] = Field(None, ge=-1) # -1 allowed for "unplaced"
     width_units: Optional[int] = Field(None, ge=1)
     depth_units: Optional[int] = Field(None, ge=1)
+    height_units: Optional[int] = Field(None, ge=1)
     content: Optional[Dict[str, Any]] = None
     color: Optional[str] = None
     is_hole: Optional[bool] = None
