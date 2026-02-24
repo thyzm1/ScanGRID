@@ -1135,17 +1135,18 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   wrapperClass="!w-full !h-full"
                   contentClass="!w-full !h-full !flex !items-center !justify-center"
                 >
-                  <div 
-                    className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden" 
-                    style={{ 
-                      width: GRID_WIDTH, 
-                      height: GRID_HEIGHT,
-                      minWidth: GRID_WIDTH,
-                      minHeight: GRID_HEIGHT,
-                      maxWidth: GRID_WIDTH,
-                      maxHeight: GRID_HEIGHT
-                    }}
-                  >
+                  <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl">
+                    <div 
+                      className="relative bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden" 
+                      style={{ 
+                        width: GRID_WIDTH, 
+                        height: GRID_HEIGHT,
+                        minWidth: GRID_WIDTH,
+                        minHeight: GRID_HEIGHT,
+                        maxWidth: GRID_WIDTH,
+                        maxHeight: GRID_HEIGHT
+                      }}
+                    >
               {/* Background Grid Lines */}
               <div className="absolute inset-0 pointer-events-none">
                 <svg width={GRID_WIDTH} height={GRID_HEIGHT} className="absolute inset-0">
@@ -1213,6 +1214,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                 ))}
               </GridLayout>
             </div>
+          </div>
           </TransformComponent>
               </>
             )}
