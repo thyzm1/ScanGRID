@@ -358,26 +358,6 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
   const shouldIgnoreClickAfterPan = () => Date.now() < suppressClickUntilRef.current;
 
-  const handleMobileHistoryAction = (action: string) => {
-    if (action === 'undo') {
-      handleUndo();
-    } else if (action === 'redo') {
-      handleRedo();
-    }
-  };
-
-  const handleMobileEditAction = (action: string) => {
-    if (action === 'add') {
-      handleAddBin();
-    } else if (action === 'duplicate') {
-      duplicateSelectedBin();
-    } else if (action === 'copy' && selectedBin) {
-      copyToClipboard(selectedBin);
-    } else if (action === 'paste') {
-      pasteFromClipboard();
-    }
-  };
-
   if (!currentDrawer) return null;
 
   const currentLayer = currentDrawer.layers[currentLayerIndex];
@@ -937,9 +917,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Top Center (Mobile) / Top Right (Desktop) */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 min-[901px]:top-4 min-[901px]:left-auto min-[901px]:right-4 min-[901px]:translate-x-0 z-20 flex flex-col items-center min-[901px]:items-end gap-2 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[901px]:w-max min-[901px]:max-w-none">
-        <div className="hidden min-[901px]:flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto">
+        <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto w-full min-[901px]:w-auto overflow-x-auto custom-scrollbar">
           {/* Undo/Redo */}
-          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={handleUndo}
               disabled={historyIndex <= 0}
@@ -961,7 +941,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
           {/* View Options */}
-          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={() => setViewFormat('grid')}
               className={`h-9 px-3 rounded-md text-sm transition-all ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
@@ -981,7 +961,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
           {/* Edit/Read Mode */}
-          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11 shrink-0">
             <button
               onClick={() => setEditMode('view')}
               className={`h-9 px-3 rounded-md text-sm font-medium transition-all ${editMode === 'view' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
@@ -997,110 +977,57 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           </div>
         </div>
 
-        {/* Mobile controls (<900px): dropdowns for coherence + compact UI */}
-        <div className="flex min-[901px]:hidden items-center gap-1 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto w-full">
-          <select
-            defaultValue=""
-            onChange={(e) => {
-              handleMobileHistoryAction(e.target.value);
-              e.currentTarget.value = '';
-            }}
-            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
-          >
-            <option value="">Historique</option>
-            <option value="undo" disabled={historyIndex <= 0}>Annuler</option>
-            <option value="redo" disabled={historyIndex >= history.length - 1}>Rétablir</option>
-          </select>
-
-          <select
-            value={viewFormat}
-            onChange={(e) => setViewFormat(e.target.value as 'grid' | 'list')}
-            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
-          >
-            <option value="grid">Vue Grille</option>
-            <option value="list">Vue Liste</option>
-          </select>
-
-          <select
-            value={editMode}
-            onChange={(e) => setEditMode(e.target.value as 'view' | 'edit')}
-            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
-          >
-            <option value="view">Consultation</option>
-            <option value="edit">Édition</option>
-          </select>
-
-          {editMode === 'edit' && (
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                handleMobileEditAction(e.target.value);
-                e.currentTarget.value = '';
-              }}
-              className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
-            >
-              <option value="">Actions</option>
-              <option value="add">Ajouter</option>
-              <option value="duplicate" disabled={!selectedBin}>Dupliquer</option>
-              <option value="copy" disabled={!selectedBin}>Copier</option>
-              <option value="paste">Coller</option>
-            </select>
-          )}
-        </div>
-
-      {/* Floating Action Buttons (Desktop only) */}
-      <div className="hidden min-[901px]:flex gap-2 pointer-events-auto">
+        {/* Floating Action Buttons */}
         {editMode === 'edit' && (
-          <>
-          <button
-            onClick={handleAddBin}
-            className="h-9 px-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Boîte
-          </button>
-          
-          {selectedBin && (
-             <>
-             <button
-                onClick={() => {
+          <div className="flex gap-2 pointer-events-auto w-full min-[901px]:w-auto overflow-x-auto custom-scrollbar justify-start min-[901px]:justify-end px-0.5">
+            <button
+              onClick={handleAddBin}
+              className="h-9 px-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1 shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Boîte
+            </button>
+            
+            {selectedBin && (
+              <>
+                <button
+                  onClick={() => {
                     duplicateSelectedBin();
-                }}
-                className="h-9 px-3 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1"
-                title="Dupliquer (Ctrl+D)"
-             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                Dupliquer
-             </button>
+                  }}
+                  className="h-9 px-3 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1 shrink-0"
+                  title="Dupliquer (Ctrl+D)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  Dupliquer
+                </button>
 
-             <button
-                onClick={() => copyToClipboard(selectedBin)}
-                className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
-                title="Copier (Ctrl+C)"
-             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                Copier
-             </button>
-             </>
-          )}
+                <button
+                  onClick={() => copyToClipboard(selectedBin)}
+                  className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1 shrink-0"
+                  title="Copier (Ctrl+C)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  Copier
+                </button>
+              </>
+            )}
 
-           <button
-             onClick={pasteFromClipboard}
-             className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
-             title="Coller une boîte (Ctrl+V)"
-           >
+            <button
+              onClick={pasteFromClipboard}
+              className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1 shrink-0"
+              title="Coller une boîte (Ctrl+V)"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
               Coller
-           </button>
-          </>
+            </button>
+          </div>
         )}
-      </div>
       </div>
 
       {/* Floating Controls - Layer Selector (Below Top Menu on Mobile, Top Left on Desktop) */}
-      <div className="absolute top-[5.2rem] left-1/2 -translate-x-1/2 lg:top-4 lg:left-4 lg:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-full max-w-[90vw] lg:w-auto lg:max-w-none">
+      <div className={`absolute ${editMode === 'edit' ? 'top-[6.8rem]' : 'top-[5.2rem]'} left-1/2 -translate-x-1/2 min-[901px]:top-20 min-[901px]:left-4 min-[901px]:translate-x-0 z-20 flex flex-col gap-2 pointer-events-none w-full max-w-[90vw] min-[901px]:w-auto min-[901px]:max-w-none`}>
         <div className="pointer-events-auto">
           <LayerSelector />
         </div>
