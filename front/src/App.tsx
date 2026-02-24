@@ -286,7 +286,7 @@ function App() {
                 animate={{ x: 0 }}
                 exit={{ x: -320 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="fixed left-0 top-14 bottom-0 w-80 border-r border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-xl overflow-y-auto z-40 shadow-2xl"
+                className="fixed left-0 top-[calc(3.5rem+env(safe-area-inset-top))] bottom-0 w-80 border-r border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-xl overflow-y-auto z-40 shadow-2xl"
               >
                 <div className="p-4">
                   <DrawerList />

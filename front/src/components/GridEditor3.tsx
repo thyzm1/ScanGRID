@@ -32,6 +32,7 @@ interface GridEditor3Props {
 }
 
 const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
+const GRID_OUTER_MARGIN_PX = 4;
 
 export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor3Props) {
   const {
@@ -1138,6 +1139,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   <div 
                     className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden" 
                     style={{ 
+                      margin: GRID_OUTER_MARGIN_PX,
                       width: GRID_WIDTH, 
                       height: GRID_HEIGHT,
                       minWidth: GRID_WIDTH,
