@@ -152,6 +152,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     }
   };
 
+  const duplicateSelectedBin = () => {
+    if (!selectedBin) return;
+    localStorage.setItem('scangrid_clipboard', JSON.stringify(selectedBin));
+    pasteFromClipboard();
+  };
+
   // History Management
   const commitHistoryState = useCallback((nextHistory: Bin[][], nextIndex: number) => {
     historyRef.current = nextHistory;
@@ -351,6 +357,26 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
 
   const shouldIgnoreClickAfterPan = () => Date.now() < suppressClickUntilRef.current;
+
+  const handleMobileHistoryAction = (action: string) => {
+    if (action === 'undo') {
+      handleUndo();
+    } else if (action === 'redo') {
+      handleRedo();
+    }
+  };
+
+  const handleMobileEditAction = (action: string) => {
+    if (action === 'add') {
+      handleAddBin();
+    } else if (action === 'duplicate') {
+      duplicateSelectedBin();
+    } else if (action === 'copy' && selectedBin) {
+      copyToClipboard(selectedBin);
+    } else if (action === 'paste') {
+      pasteFromClipboard();
+    }
+  };
 
   if (!currentDrawer) return null;
 
@@ -910,92 +936,125 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] relative">
       {/* Floating Controls - Top Center (Mobile) / Top Right (Desktop) */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 sm:top-4 sm:left-auto sm:right-4 sm:translate-x-0 z-20 flex flex-col items-center sm:items-end gap-2 pointer-events-none w-[calc(100%-0.75rem)] sm:w-max max-w-[calc(100%-0.75rem)]">
-        <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1 sm:gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1 sm:p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto transition-all w-full sm:w-auto">
-        
-        {/* Undo/Redo */}
-        <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
-             <button 
-                onClick={handleUndo} 
-                disabled={historyIndex <= 0}
-                className="p-1.5 text-gray-500 hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Annuler (Ctrl+Z)"
-             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-             </button>
-             <button 
-                onClick={handleRedo} 
-                disabled={historyIndex >= history.length - 1}
-                className="p-1.5 text-gray-500 hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Rétablir (Ctrl+Shift+Z)"
-             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
-             </button>
-        </div>
-
-        <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-        {/* View Options */}
-        <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)]">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 min-[901px]:top-4 min-[901px]:left-auto min-[901px]:right-4 min-[901px]:translate-x-0 z-20 flex flex-col items-center min-[901px]:items-end gap-2 pointer-events-none w-[calc(100%-0.75rem)] max-w-[calc(100%-0.75rem)] min-[901px]:w-max min-[901px]:max-w-none">
+        <div className="hidden min-[901px]:flex items-center gap-2 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto">
+          {/* Undo/Redo */}
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
             <button
-                onClick={() => setViewFormat('grid')}
-                className={`p-1.5 rounded-md transition-all ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                title="Vue Grille"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className="h-9 w-9 rounded-md flex items-center justify-center text-gray-500 hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Annuler (Ctrl+Z)"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
             </button>
             <button
-                onClick={() => setViewFormat('list')}
-                className={`p-1.5 rounded-md transition-all ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                title="Vue Liste"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className="h-9 w-9 rounded-md flex items-center justify-center text-gray-500 hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Rétablir (Ctrl+Shift+Z)"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
             </button>
+          </div>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* View Options */}
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
+            <button
+              onClick={() => setViewFormat('grid')}
+              className={`h-9 px-3 rounded-md text-sm transition-all ${viewFormat === 'grid' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              title="Vue Grille"
+            >
+              Vue Grille
+            </button>
+            <button
+              onClick={() => setViewFormat('list')}
+              className={`h-9 px-3 rounded-md text-sm transition-all ${viewFormat === 'list' ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+              title="Vue Liste"
+            >
+              Vue Liste
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* Edit/Read Mode */}
+          <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] h-11">
+            <button
+              onClick={() => setEditMode('view')}
+              className={`h-9 px-3 rounded-md text-sm font-medium transition-all ${editMode === 'view' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+            >
+              Consultation
+            </button>
+            <button
+              onClick={() => setEditMode('edit')}
+              className={`h-9 px-3 rounded-md text-sm font-medium transition-all ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-[var(--color-text)]'}`}
+            >
+              Édition
+            </button>
+          </div>
         </div>
-        
-        <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
-        <div className="flex items-center bg-[var(--color-bg)] rounded-lg p-1">
-          <button
-            onClick={() => setEditMode('view')}
-            className={`
-              px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all
-              ${editMode === 'view' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-600 dark:text-gray-400'}
-            `}
+        {/* Mobile controls (<900px): dropdowns for coherence + compact UI */}
+        <div className="flex min-[901px]:hidden items-center gap-1 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-1 rounded-xl shadow-lg border border-[var(--color-border)] pointer-events-auto w-full">
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              handleMobileHistoryAction(e.target.value);
+              e.currentTarget.value = '';
+            }}
+            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
           >
-            <svg className="w-4 h-4 inline sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            <span className="hidden sm:inline">Consultation</span>
-          </button>
-          <button
-            onClick={() => setEditMode('edit')}
-            className={`
-              px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all
-              ${editMode === 'edit' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-600 dark:text-gray-400'}
-            `}
+            <option value="">Historique</option>
+            <option value="undo" disabled={historyIndex <= 0}>Annuler</option>
+            <option value="redo" disabled={historyIndex >= history.length - 1}>Rétablir</option>
+          </select>
+
+          <select
+            value={viewFormat}
+            onChange={(e) => setViewFormat(e.target.value as 'grid' | 'list')}
+            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
           >
-            <svg className="w-4 h-4 inline sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <span className="hidden sm:inline">Édition</span>
-          </button>
+            <option value="grid">Vue Grille</option>
+            <option value="list">Vue Liste</option>
+          </select>
+
+          <select
+            value={editMode}
+            onChange={(e) => setEditMode(e.target.value as 'view' | 'edit')}
+            className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
+          >
+            <option value="view">Consultation</option>
+            <option value="edit">Édition</option>
+          </select>
+
+          {editMode === 'edit' && (
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                handleMobileEditAction(e.target.value);
+                e.currentTarget.value = '';
+              }}
+              className="h-9 min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none"
+            >
+              <option value="">Actions</option>
+              <option value="add">Ajouter</option>
+              <option value="duplicate" disabled={!selectedBin}>Dupliquer</option>
+              <option value="copy" disabled={!selectedBin}>Copier</option>
+              <option value="paste">Coller</option>
+            </select>
+          )}
         </div>
 
-      </div>
-
-      {/* Floating Action Buttons (Secondary Row) */}
-      <div className="flex gap-2 pointer-events-auto w-full sm:w-auto overflow-x-auto custom-scrollbar px-1 sm:px-0 pb-1 sm:pb-0">
+      {/* Floating Action Buttons (Desktop only) */}
+      <div className="hidden min-[901px]:flex gap-2 pointer-events-auto">
         {editMode === 'edit' && (
           <>
           <button
             onClick={handleAddBin}
-            className="px-3 py-1.5 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1"
+            className="h-9 px-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-md flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1007,11 +1066,9 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
              <>
              <button
                 onClick={() => {
-                    // Duplicate logic: copy current bin to clipboard and trigger paste immediately
-                    localStorage.setItem('scangrid_clipboard', JSON.stringify(selectedBin));
-                    pasteFromClipboard();
+                    duplicateSelectedBin();
                 }}
-                className="px-3 py-1.5 bg-indigo-500 text-white rounded-xl text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1"
+                className="h-9 px-3 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1"
                 title="Dupliquer (Ctrl+D)"
              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
@@ -1020,7 +1077,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
              <button
                 onClick={() => copyToClipboard(selectedBin)}
-                className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
+                className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
                 title="Copier (Ctrl+C)"
              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -1031,7 +1088,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
            <button
              onClick={pasteFromClipboard}
-             className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
+             className="h-9 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md flex items-center gap-1"
              title="Coller une boîte (Ctrl+V)"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -1050,7 +1107,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Unplaced Dock - Right Side */}
-      <div className="absolute top-[9.25rem] sm:top-20 right-2 sm:right-4 bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+      <div className="absolute top-[10rem] min-[901px]:top-20 right-1.5 min-[901px]:right-4 bottom-28 min-[901px]:bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
          <div className="pointer-events-auto h-full">
             <UnplacedDock 
                 unplacedBins={unplacedBins}

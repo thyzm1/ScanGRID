@@ -20,18 +20,24 @@ export default function UnplacedDock({
   if (unplacedBins.length === 0) return null;
 
   return (
-    <div className="w-36 sm:w-48 h-full z-10 flex flex-col gap-2 pointer-events-none">
-      <div className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden flex flex-col pointer-events-auto h-full">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+    <div className="w-32 min-[901px]:w-44 lg:w-48 h-full z-10 flex flex-col gap-2">
+      <div className="bg-[var(--color-bg)]/95 backdrop-blur-xl rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden flex flex-col pointer-events-auto h-full max-h-[52vh] min-[901px]:max-h-none">
+        <div className="p-2.5 min-[901px]:p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <h3 className="text-xs min-[901px]:text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
             En attente ({unplacedBins.length})
           </h3>
+          <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+            {editMode === 'edit' ? 'Glisser vers la grille' : 'Passez en mode édition'}
+          </p>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+        <div
+          className="flex-1 overflow-y-auto p-1.5 min-[901px]:p-2 space-y-1.5 min-[901px]:space-y-2 custom-scrollbar touch-pan-y"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {unplacedBins.map((bin) => {
             const isSelected = selectedBin?.bin_id === bin.bin_id;
             
@@ -46,6 +52,7 @@ export default function UnplacedDock({
                   }
                   // Set drag data for react-grid-layout dropping
                   e.dataTransfer.setData("text/plain", bin.bin_id);
+                  e.dataTransfer.effectAllowed = 'move';
                   onDragStart(bin);
                 }}
                 onClick={(e) => {
@@ -57,14 +64,21 @@ export default function UnplacedDock({
                     onBinDoubleClick(bin);
                 }}
                 className={`
-                  relative p-3 rounded-lg border transition-all group
-                  ${editMode === 'edit' ? 'cursor-move' : 'cursor-pointer'}
+                  relative p-2.5 min-[901px]:p-3 rounded-lg border transition-all group
+                  ${editMode === 'edit' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                   ${isSelected 
                     ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-900/30 ring-1 ring-blue-500 backdrop-blur-sm' 
                     : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 backdrop-blur-sm hover:border-blue-300 dark:hover:border-blue-700 hover:bg-[var(--color-bg-secondary)]/80'
                   }
                 `}
               >
+                {editMode === 'edit' && (
+                  <div className="absolute top-1.5 right-1.5 opacity-70 text-gray-400 pointer-events-none">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6h.01M10 12h.01M10 18h.01M14 6h.01M14 12h.01M14 18h.01" />
+                    </svg>
+                  </div>
+                )}
                 <div 
                   className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
                   style={{ backgroundColor: bin.color || '#3b82f6' }}
