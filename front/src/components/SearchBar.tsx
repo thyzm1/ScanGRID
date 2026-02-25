@@ -18,6 +18,7 @@ interface SearchResult {
 }
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const shouldIgnoreDescriptionQuery = (value: string) => value.trim().length <= 2;
 
 const highlightText = (text: string | undefined, query: string) => {
   if (!text || !query.trim()) return text;
@@ -104,6 +105,7 @@ export default function SearchBar() {
 
     const searchResults: SearchResult[] = [];
     const lowerQuery = query.toLowerCase();
+    const allowDescriptionMatch = !shouldIgnoreDescriptionQuery(query);
 
     drawers.forEach((drawer) => {
       // Drawer search: Name matches and NO category selected (drawers don't have categories)
@@ -125,7 +127,7 @@ export default function SearchBar() {
 
           // 2. Check Text
           const matchLabel = bin.content.title?.toLowerCase().includes(lowerQuery);
-          const matchDesc = bin.content.description?.toLowerCase().includes(lowerQuery);
+          const matchDesc = allowDescriptionMatch && bin.content.description?.toLowerCase().includes(lowerQuery);
           const matchedItem = bin.content.items?.find(item => 
              typeof item === 'string' 
              ? item.toLowerCase().includes(lowerQuery) 
