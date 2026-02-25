@@ -18,6 +18,10 @@ class BinContentSchema(BaseModel):
         True,
         description="Indique si une autre boîte peut être posée au-dessus"
     )
+    can_rotate: Optional[bool] = Field(
+        False,
+        description="Indique si la boîte peut être tournée (rotation 90°)"
+    )
 
 
 # ============= SCHEMAS POUR CATEGORIE =============

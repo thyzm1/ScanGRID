@@ -12,12 +12,17 @@ export interface PlanBinMove {
   fromLayerIndex: number;
   fromX: number;
   fromY: number;
+  fromWidthUnits: number;
+  fromDepthUnits: number;
   toDrawerId: string;
   toDrawerName: string;
   toLayerId: string;
   toLayerIndex: number;
   toX: number;
   toY: number;
+  toWidthUnits: number;
+  toDepthUnits: number;
+  rotated: boolean;
   reason: string;
 }
 
@@ -27,12 +32,15 @@ export interface PlanPlacement {
   widthUnits: number;
   depthUnits: number;
   heightUnits: number;
+  rotated: boolean;
   fromDrawerId: string;
   fromDrawerName: string;
   fromLayerId: string;
   fromLayerIndex: number;
   fromX: number;
   fromY: number;
+  fromWidthUnits: number;
+  fromDepthUnits: number;
   toDrawerId: string;
   toDrawerName: string;
   toLayerId: string;
@@ -93,6 +101,7 @@ interface BinMeta {
   tokens: string[];
   sizeSignature: SizeSignature | null;
   canPlaceOnTop: boolean;
+  canRotate: boolean;
 }
 
 interface DrawerProfile {
@@ -116,6 +125,9 @@ interface PlacementCandidate {
   x: number;
   y: number;
   z: number;
+  widthUnits: number;
+  depthUnits: number;
+  rotated: boolean;
 }
 
 interface DrawerState {
@@ -201,6 +213,10 @@ const canSupportOtherBins = (bin: Bin): boolean => {
   return bin.content.can_place_on_top !== false;
 };
 
+const canRotateBin = (bin: Bin): boolean => {
+  return bin.content.can_rotate === true;
+};
+
 const incrementMapCount = (map: Map<string, number>, key: string, inc = 1) => {
   map.set(key, (map.get(key) || 0) + inc);
 };
@@ -265,14 +281,13 @@ const makeDrawerState = (drawer: Drawer): DrawerState => {
 
 const canPlaceAt = (
   state: DrawerState,
-  bin: Bin,
+  width: number,
+  depth: number,
+  height: number,
   x: number,
   y: number,
   z: number
 ): boolean => {
-  const width = bin.width_units;
-  const depth = bin.depth_units;
-  const height = Math.max(1, bin.height_units || 1);
   const layerCount = state.orderedLayers.length;
 
   if (x < 0 || y < 0 || z < 0) return false;
@@ -310,7 +325,8 @@ const computePlacementScore = (
   y: number,
   z: number,
   preferUpperLayers: boolean,
-  maxStartLayer: number
+  maxStartLayer: number,
+  rotated: boolean
 ): number => {
   const zCost = preferUpperLayers ? maxStartLayer - z : z;
   let score = zCost * 100000 + y * state.drawer.width_units + x;
@@ -324,22 +340,24 @@ const computePlacementScore = (
     score += distance * 15;
   }
 
+  if (rotated) {
+    score += 8;
+  }
+
   return score;
 };
 
 const markPlacement = (
   state: DrawerState,
-  bin: Bin,
+  width: number,
+  depth: number,
+  height: number,
   x: number,
   y: number,
   z: number,
   groupKey: string,
   canPlaceOnTop: boolean
 ) => {
-  const width = bin.width_units;
-  const depth = bin.depth_units;
-  const height = Math.max(1, bin.height_units || 1);
-
   for (let zz = z; zz < z + height; zz += 1) {
     for (let xx = x; xx < x + width; xx += 1) {
       for (let yy = y; yy < y + depth; yy += 1) {
@@ -410,6 +428,24 @@ const findPlacementInDrawer = (
   if (maxStartLayer < 0) return null;
   const preferUpperLayers = mode === 'smart' && !binMeta.canPlaceOnTop;
 
+  const orientations: Array<{ widthUnits: number; depthUnits: number; rotated: boolean }> = [
+    {
+      widthUnits: binMeta.bin.width_units,
+      depthUnits: binMeta.bin.depth_units,
+      rotated: false,
+    },
+  ];
+  if (
+    binMeta.canRotate &&
+    binMeta.bin.width_units !== binMeta.bin.depth_units
+  ) {
+    orientations.push({
+      widthUnits: binMeta.bin.depth_units,
+      depthUnits: binMeta.bin.width_units,
+      rotated: true,
+    });
+  }
+
   const zCandidates: number[] = [];
   if (mode === 'by_layer') {
     const z = Math.min(Math.max(0, binMeta.sourceLayerIndex), maxStartLayer);
@@ -426,24 +462,37 @@ const findPlacementInDrawer = (
     }
   }
 
-  let best: { x: number; y: number; z: number; score: number } | null = null;
+  let best:
+    | { x: number; y: number; z: number; score: number; widthUnits: number; depthUnits: number; rotated: boolean }
+    | null = null;
 
-  for (const z of zCandidates) {
-    for (let y = 0; y <= state.drawer.depth_units - binMeta.bin.depth_units; y += 1) {
-      for (let x = 0; x <= state.drawer.width_units - binMeta.bin.width_units; x += 1) {
-        if (!canPlaceAt(state, binMeta.bin, x, y, z)) continue;
+  for (const orientation of orientations) {
+    for (const z of zCandidates) {
+      for (let y = 0; y <= state.drawer.depth_units - orientation.depthUnits; y += 1) {
+        for (let x = 0; x <= state.drawer.width_units - orientation.widthUnits; x += 1) {
+          if (!canPlaceAt(state, orientation.widthUnits, orientation.depthUnits, height, x, y, z)) continue;
 
-        const score = computePlacementScore(
-          state,
-          binMeta.groupKey,
-          x,
-          y,
-          z,
-          preferUpperLayers,
-          maxStartLayer
-        );
-        if (!best || score < best.score) {
-          best = { x, y, z, score };
+          const score = computePlacementScore(
+            state,
+            binMeta.groupKey,
+            x,
+            y,
+            z,
+            preferUpperLayers,
+            maxStartLayer,
+            orientation.rotated
+          );
+          if (!best || score < best.score) {
+            best = {
+              x,
+              y,
+              z,
+              score,
+              widthUnits: orientation.widthUnits,
+              depthUnits: orientation.depthUnits,
+              rotated: orientation.rotated,
+            };
+          }
         }
       }
     }
@@ -459,6 +508,9 @@ const findPlacementInDrawer = (
     x: best.x,
     y: best.y,
     z: best.z,
+    widthUnits: best.widthUnits,
+    depthUnits: best.depthUnits,
+    rotated: best.rotated,
   };
 };
 
@@ -487,6 +539,7 @@ const flattenBins = (
           tokens,
           sizeSignature,
           canPlaceOnTop: canSupportOtherBins(bin),
+          canRotate: canRotateBin(bin),
         });
       });
     });
@@ -567,27 +620,28 @@ const buildReason = (
       : "creation d'un regroupement coherent";
 
   const modePrefix = mode === 'by_layer' ? 'Intra-couche' : 'Optimisation';
+  const rotationSuffix = placement.rotated ? ' + rotation 90°' : '';
 
   if (mode === 'smart' && !binMeta.canPlaceOnTop) {
-    return `${modePrefix} non empilable: priorisee sur couche haute`;
+    return `${modePrefix} non empilable: priorisee sur couche haute${rotationSuffix}`;
   }
 
   if (binMeta.sizeSignature) {
-    return `${modePrefix} dimensionnelle ${binMeta.sizeSignature.raw} (${coherenceHint})`;
+    return `${modePrefix} dimensionnelle ${binMeta.sizeSignature.raw} (${coherenceHint})${rotationSuffix}`;
   }
 
   if (binMeta.groupKey.startsWith('cat:')) {
     const categoryId = binMeta.groupKey.slice(4);
     const categoryName = categoriesById[categoryId]?.name || 'Catégorie';
-    return `${modePrefix} par catégorie ${categoryName} (${coherenceHint})`;
+    return `${modePrefix} par catégorie ${categoryName} (${coherenceHint})${rotationSuffix}`;
   }
 
   const uniqueTokens = Array.from(new Set(binMeta.tokens));
   if (uniqueTokens.length > 0) {
-    return `${modePrefix} thématique: ${uniqueTokens.slice(0, 3).join(', ')}`;
+    return `${modePrefix} thématique: ${uniqueTokens.slice(0, 3).join(', ')}${rotationSuffix}`;
   }
 
-  return `${modePrefix} de l’espace et cohérence locale`;
+  return `${modePrefix} de l’espace et cohérence locale${rotationSuffix}`;
 };
 
 export const generateReorganizationPlan = (
@@ -637,9 +691,16 @@ export const generateReorganizationPlan = (
           return false;
         }
 
-        return (
+        const canFitDirect =
           binMeta.bin.width_units <= drawer.width_units &&
-          binMeta.bin.depth_units <= drawer.depth_units &&
+          binMeta.bin.depth_units <= drawer.depth_units;
+        const canFitRotated =
+          binMeta.canRotate &&
+          binMeta.bin.depth_units <= drawer.width_units &&
+          binMeta.bin.width_units <= drawer.depth_units;
+
+        return (
+          (canFitDirect || canFitRotated) &&
           Math.max(1, binMeta.bin.height_units || 1) <= maxLayers
         );
       })
@@ -670,7 +731,9 @@ export const generateReorganizationPlan = (
 
       markPlacement(
         state,
-        binMeta.bin,
+        placement.widthUnits,
+        placement.depthUnits,
+        Math.max(1, binMeta.bin.height_units || 1),
         placement.x,
         placement.y,
         placement.z,
@@ -682,22 +745,27 @@ export const generateReorganizationPlan = (
         placement.drawerId !== binMeta.sourceDrawerId ||
         placement.layerId !== binMeta.sourceLayerId ||
         placement.x !== binMeta.bin.x_grid ||
-        placement.y !== binMeta.bin.y_grid;
+        placement.y !== binMeta.bin.y_grid ||
+        placement.widthUnits !== binMeta.bin.width_units ||
+        placement.depthUnits !== binMeta.bin.depth_units;
 
       const reason = buildReason(binMeta, placement, options.mode, profiles, categoriesById);
 
       placements.push({
         binId: binMeta.bin.bin_id,
         title: binMeta.bin.content.title || 'Sans titre',
-        widthUnits: binMeta.bin.width_units,
-        depthUnits: binMeta.bin.depth_units,
+        widthUnits: placement.widthUnits,
+        depthUnits: placement.depthUnits,
         heightUnits: Math.max(1, binMeta.bin.height_units || 1),
+        rotated: placement.rotated,
         fromDrawerId: binMeta.sourceDrawerId,
         fromDrawerName: binMeta.sourceDrawerName,
         fromLayerId: binMeta.sourceLayerId,
         fromLayerIndex: binMeta.sourceLayerIndex,
         fromX: binMeta.bin.x_grid,
         fromY: binMeta.bin.y_grid,
+        fromWidthUnits: binMeta.bin.width_units,
+        fromDepthUnits: binMeta.bin.depth_units,
         toDrawerId: placement.drawerId,
         toDrawerName: placement.drawerName,
         toLayerId: placement.layerId,
@@ -718,12 +786,17 @@ export const generateReorganizationPlan = (
           fromLayerIndex: binMeta.sourceLayerIndex,
           fromX: binMeta.bin.x_grid,
           fromY: binMeta.bin.y_grid,
+          fromWidthUnits: binMeta.bin.width_units,
+          fromDepthUnits: binMeta.bin.depth_units,
           toDrawerId: placement.drawerId,
           toDrawerName: placement.drawerName,
           toLayerId: placement.layerId,
           toLayerIndex: placement.layerIndex,
           toX: placement.x,
           toY: placement.y,
+          toWidthUnits: placement.widthUnits,
+          toDepthUnits: placement.depthUnits,
+          rotated: placement.rotated,
           reason,
         });
       } else {

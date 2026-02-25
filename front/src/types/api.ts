@@ -23,6 +23,7 @@ export interface BinContent {
   description?: string;
   icon?: string; // Icon class name (e.g. "ri-home-line")
   can_place_on_top?: boolean;
+  can_rotate?: boolean;
   items?: string[];
   photos?: string[];
 }

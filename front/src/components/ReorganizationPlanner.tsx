@@ -143,6 +143,8 @@ export default function ReorganizationPlanner() {
             x_grid: move.toX,
             y_grid: move.toY,
             layer_id: move.toLayerId,
+            width_units: move.toWidthUnits,
+            depth_units: move.toDepthUnits,
           });
         } catch {
           failedMoves.push(move.title);
@@ -340,7 +342,7 @@ export default function ReorganizationPlanner() {
                 <div className="max-h-[420px] overflow-y-auto pr-1 space-y-2">
                   {plan.moves.map((move) => (
                     <div
-                      key={`${move.binId}-${move.toDrawerId}-${move.toLayerId}-${move.toX}-${move.toY}`}
+                      key={`${move.binId}-${move.toDrawerId}-${move.toLayerId}-${move.toX}-${move.toY}-${move.toWidthUnits}-${move.toDepthUnits}`}
                       className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
                     >
                       <div className="flex flex-col gap-1">
@@ -352,6 +354,11 @@ export default function ReorganizationPlanner() {
                         {'  '}→{'  '}
                         {move.toDrawerName} • Couche {move.toLayerIndex + 1} ({move.toX}, {move.toY})
                       </div>
+                      {(move.rotated || move.fromWidthUnits !== move.toWidthUnits || move.fromDepthUnits !== move.toDepthUnits) && (
+                        <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                          Dimensions: {move.fromWidthUnits}x{move.fromDepthUnits} → {move.toWidthUnits}x{move.toDepthUnits}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

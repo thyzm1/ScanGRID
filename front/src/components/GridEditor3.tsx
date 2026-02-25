@@ -717,6 +717,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         description: '',
         icon: getRandomIcon(),
         can_place_on_top: true,
+        can_rotate: false,
         items: [],
         photos: [],
       },

@@ -28,6 +28,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [depthUnits, setDepthUnits] = useState(1);
   const [heightUnits, setHeightUnits] = useState(1);
   const [canPlaceOnTop, setCanPlaceOnTop] = useState(true);
+  const [canRotate, setCanRotate] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
   const [improvementProgress, setImprovementProgress] = useState(0);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -73,6 +74,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       setDepthUnits(bin.depth_units || 1);
       setHeightUnits(bin.height_units || 1);
       setCanPlaceOnTop(bin.content.can_place_on_top ?? true);
+      setCanRotate(bin.content.can_rotate ?? false);
       // If bin.content.icon exists, use it.
       // Note: we need to update types/api.ts to include icon in BinContent if not already there.
       // But assuming it is or allows extra props.
@@ -102,6 +104,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       items,
       photos,
       can_place_on_top: canPlaceOnTop,
+      can_rotate: canRotate,
       icon, 
     };
 
@@ -446,6 +449,43 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                   <span
                     className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
                       canPlaceOnTop ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">Rotation 90° en réorganisation</label>
+            <button
+              type="button"
+              onClick={() => setCanRotate((prev) => !prev)}
+              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                canRotate
+                  ? 'border-blue-300 bg-blue-50/80 dark:bg-blue-900/20'
+                  : 'border-gray-300 bg-gray-50/80 dark:bg-gray-900/20'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">
+                    {canRotate ? 'Rotation autorisée' : 'Rotation interdite'}
+                  </div>
+                  <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                    {canRotate
+                      ? 'L’algorithme peut inverser largeur/profondeur pour optimiser le placement.'
+                      : 'Par défaut, la boîte garde toujours son orientation actuelle.'}
+                  </div>
+                </div>
+                <div
+                  className={`w-11 h-6 rounded-full relative transition-colors ${
+                    canRotate ? 'bg-blue-500' : 'bg-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                      canRotate ? 'translate-x-5' : 'translate-x-0.5'
                     }`}
                   />
                 </div>
