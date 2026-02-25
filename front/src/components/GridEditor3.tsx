@@ -1350,7 +1350,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   contentClass="!w-full !h-full !flex !items-center !justify-center"
                 >
                   <div 
-                    className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-xl overflow-hidden" 
+                    className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden" 
                     style={{ 
                       margin: GRID_OUTER_MARGIN_PX,
                       width: GRID_WIDTH, 

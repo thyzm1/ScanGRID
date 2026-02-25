@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Bin, BinContent } from '../types/api';
 import { useStore } from '../store/useStore';
@@ -32,6 +32,10 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [isImproving, setIsImproving] = useState(false);
   const [improvementProgress, setImprovementProgress] = useState(0);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const isHydratingRef = useRef(true);
+  const lastSavedSignatureRef = useRef('');
 
   // Ensure categories are refreshed whenever the bin editor opens.
   useEffect(() => {
@@ -63,40 +67,63 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   }, [bin?.bin_id, setCategories]);
 
   useEffect(() => {
-    if (bin) {
-      setTitle(bin.content.title || '');
-      setDescription(bin.content.description || '');
-      setItems(bin.content.items || []);
-      setPhotos(bin.content.photos || []);
-      setColor(bin.color || '#3b82f6');
-      setCategoryId(bin.category_id || null);
-      setWidthUnits(bin.width_units || 1);
-      setDepthUnits(bin.depth_units || 1);
-      setHeightUnits(bin.height_units || 1);
-      setCanPlaceOnTop(bin.content.can_place_on_top ?? true);
-      setCanRotate(bin.content.can_rotate ?? false);
-      // If bin.content.icon exists, use it.
-      // Note: we need to update types/api.ts to include icon in BinContent if not already there.
-      // But assuming it is or allows extra props.
-      setIcon((bin.content as any).icon || '');
-
-      if (currentDrawer && currentDrawer.layers[currentLayerIndex]) {
-          // If the bin belongs to a specific layer (from bin.layer_id), use that.
-          // Otherwise default to current layer.
-          // The modal receives 'bin', which might be from 'unplacedBins' or 'currentLayer.bins'.
-          // 'unplacedBins' don't have a layer_id usually, or it's not relevant until placed.
-          // But here we are editing an existing bin.
-          // If we are editing a bin in the dock, we might want to assign it to a layer explicitly?
-          // Or just move it.
-          // For now, respect the bin's layer if it has one, else current layer.
-          setSelectedLayerId(bin.layer_id || currentDrawer.layers[currentLayerIndex].layer_id);
-      }
+    if (!bin) {
+      isHydratingRef.current = true;
+      return;
     }
-  }, [bin, currentDrawer, currentLayerIndex]);
 
-  if (!bin) return null;
+    const fallbackLayerId = currentDrawer?.layers[currentLayerIndex]?.layer_id || null;
+    const initialLayerId = bin.layer_id || fallbackLayerId;
 
-  const handleSave = () => {
+    isHydratingRef.current = true;
+    setTitle(bin.content.title || '');
+    setDescription(bin.content.description || '');
+    setItems(bin.content.items || []);
+    setPhotos(bin.content.photos || []);
+    setColor(bin.color || '#3b82f6');
+    setCategoryId(bin.category_id || null);
+    setWidthUnits(bin.width_units || 1);
+    setDepthUnits(bin.depth_units || 1);
+    setHeightUnits(bin.height_units || 1);
+    setCanPlaceOnTop(bin.content.can_place_on_top ?? true);
+    setCanRotate(bin.content.can_rotate ?? false);
+    setIcon((bin.content as any).icon || '');
+    setSelectedLayerId(initialLayerId);
+    setIsAutoSaving(false);
+
+    const initialSignature = JSON.stringify({
+      title: bin.content.title || '',
+      description: bin.content.description || '',
+      items: bin.content.items || [],
+      photos: bin.content.photos || [],
+      icon: (bin.content as any).icon || '',
+      can_place_on_top: bin.content.can_place_on_top ?? true,
+      can_rotate: bin.content.can_rotate ?? false,
+      color: bin.color || '#3b82f6',
+      category_id: bin.category_id || null,
+      width_units: bin.width_units || 1,
+      depth_units: bin.depth_units || 1,
+      height_units: bin.height_units || 1,
+      layer_id: initialLayerId || null,
+    });
+    lastSavedSignatureRef.current = initialSignature;
+
+    const unlock = window.setTimeout(() => {
+      isHydratingRef.current = false;
+    }, 0);
+
+    return () => {
+      window.clearTimeout(unlock);
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [bin?.bin_id, currentDrawer?.drawer_id, currentLayerIndex]);
+
+  useEffect(() => {
+    if (!bin || isHydratingRef.current) return;
+
     const updatedContent: BinContent = {
       ...bin.content,
       title,
@@ -105,10 +132,10 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       photos,
       can_place_on_top: canPlaceOnTop,
       can_rotate: canRotate,
-      icon, 
+      icon,
     };
 
-    onSave({
+    const updatedBin: Bin = {
       ...bin,
       content: updatedContent,
       category_id: categoryId || undefined,
@@ -116,10 +143,57 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       width_units: widthUnits,
       depth_units: depthUnits,
       height_units: heightUnits,
-      layer_id: selectedLayerId || undefined
+      layer_id: selectedLayerId || undefined,
+    };
+
+    const signature = JSON.stringify({
+      title,
+      description,
+      items,
+      photos,
+      icon,
+      can_place_on_top: canPlaceOnTop,
+      can_rotate: canRotate,
+      color,
+      category_id: categoryId || null,
+      width_units: widthUnits,
+      depth_units: depthUnits,
+      height_units: heightUnits,
+      layer_id: selectedLayerId || null,
     });
-    onClose();
-  };
+
+    if (signature === lastSavedSignatureRef.current) return;
+
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      setIsAutoSaving(true);
+      onSave(updatedBin);
+      lastSavedSignatureRef.current = signature;
+      setIsAutoSaving(false);
+      autoSaveTimerRef.current = null;
+    }, 220);
+  }, [
+    bin,
+    onSave,
+    title,
+    description,
+    items,
+    photos,
+    color,
+    selectedLayerId,
+    categoryId,
+    icon,
+    widthUnits,
+    depthUnits,
+    heightUnits,
+    canPlaceOnTop,
+    canRotate,
+  ]);
+
+  if (!bin) return null;
 
   const handleAddItem = () => {
     if (newItem.trim()) {
@@ -249,20 +323,45 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Title - First */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">
-              Titre <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className="input w-full text-lg"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="ESP32 Dev Boards"
-              required
-            />
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-128px)]">
+          <div className="flex items-center justify-end">
+            <span className="text-xs text-[var(--color-text-secondary)]">
+              {isAutoSaving ? 'Sauvegarde automatique...' : 'Sauvegarde automatique active'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 items-end">
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Titre <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                className="input w-full text-lg"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="ESP32 Dev Boards"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Catégorie</label>
+              <select
+                className="input w-full"
+                value={categoryId || ''}
+                onChange={(e) => setCategoryId(e.target.value || null)}
+                disabled={isLoadingCategories}
+              >
+                <option value="">
+                  {isLoadingCategories ? 'Chargement des catégories...' : 'Aucune'}
+                </option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Description - Second */}
@@ -366,7 +465,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 />
                 <button
                   onClick={handleAddItem}
-                  className="btn-primary px-4"
+                  className="btn-primary px-4 rounded-xl"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -493,31 +592,8 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             </button>
           </div>
 
-           {/* Category & Icon - Third */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{/* Category */}
-            <div>
-              <label className="block text-sm font-semibold mb-2">Catégorie</label>
-              <select
-                className="input w-full"
-                value={categoryId || ''}
-                onChange={(e) => setCategoryId(e.target.value || null)}
-                disabled={isLoadingCategories}
-              >
-                <option value="">
-                  {isLoadingCategories ? 'Chargement des catégories...' : 'Aucune'}
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Icon Picker */}
-            <div className="flex-1">
-              <IconPicker value={icon} onChange={setIcon} />
-            </div>
+          <div>
+            <IconPicker value={icon} onChange={setIcon} />
           </div>
 
           {/* Layer Selection - Fifth (Moved down) */}
@@ -583,7 +659,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 />
                 <button
                   onClick={handleAddPhoto}
-                  className="btn-primary px-4"
+                  className="btn-primary px-4 rounded-xl"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -628,28 +704,6 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-[var(--color-border)] flex items-center justify-end gap-3 bg-[var(--color-bg-secondary)]/30 backdrop-blur-sm">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-secondary)] transition-all shadow-sm hover:shadow-md"
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!title.trim()}
-            className={`
-              px-5 py-2.5 rounded-xl font-medium text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2
-              ${!title.trim() ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}
-            `}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Enregistrer
-          </button>
-        </div>
       </motion.div>
     </div>
   );
