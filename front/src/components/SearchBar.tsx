@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { apiClient } from '../services/api';
 import type { Bin, Drawer, Category } from '../types/api';
+import { recordBinSearch } from '../utils/analytics';
 
 interface SearchResult {
   drawer: Drawer;
@@ -172,6 +173,7 @@ export default function SearchBar() {
     resetSearchInputs();
     
     if (result.type === 'bin' && result.bin) {
+      recordBinSearch(result.bin, result.drawer);
       setTimeout(() => {
         setSearchedBinId(result.bin!.bin_id);
       }, 50);

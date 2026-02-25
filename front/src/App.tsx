@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from './store/useStore';
 import DrawerList from './components/DrawerList';
@@ -10,8 +10,10 @@ import BinEditorModal from './components/BinEditorModal';
 import ReorganizationPlanner from './components/ReorganizationPlanner';
 import { apiClient } from './services/api';
 import type { Bin } from './types/api';
+import { recordBinOpen } from './utils/analytics';
 
 function App() {
+  const lastOpenedBinRef = useRef<string | null>(null);
   const {
     darkMode,
     currentDrawer,
@@ -72,6 +74,18 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [setSidebarOpen]);
+
+  useEffect(() => {
+    if (!selectedBin) {
+      lastOpenedBinRef.current = null;
+      return;
+    }
+
+    if (lastOpenedBinRef.current !== selectedBin.bin_id) {
+      recordBinOpen(selectedBin, currentDrawer || undefined);
+      lastOpenedBinRef.current = selectedBin.bin_id;
+    }
+  }, [selectedBin, currentDrawer]);
 
   const handleBinClick = (bin: Bin) => {
     setSelectedBin(bin);

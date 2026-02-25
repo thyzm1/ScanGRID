@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { apiClient } from '../services/api';
-import { Plus, Trash2, Settings as SettingsIcon, Palette, Database, Shield } from 'lucide-react';
+import { Plus, Trash2, Settings as SettingsIcon, Palette, Database, Shield, BarChart3, RotateCcw } from 'lucide-react';
+import { getAnalyticsSnapshot, resetAnalytics, type AnalyticsSnapshot } from '../utils/analytics';
 
 export const Settings: React.FC = () => {
   const { categories, setCategories, addCategory, removeCategory, darkMode, toggleDarkMode } = useStore();
@@ -9,7 +10,8 @@ export const Settings: React.FC = () => {
   const [newCategoryIcon, setNewCategoryIcon] = useState('ri-folder-line');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'advanced'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'stats' | 'advanced'>('general');
+  const [stats, setStats] = useState<AnalyticsSnapshot>(() => getAnalyticsSnapshot());
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -22,6 +24,25 @@ export const Settings: React.FC = () => {
     };
     fetchCategories();
   }, [setCategories]);
+
+  useEffect(() => {
+    if (activeTab !== 'stats') return;
+
+    const refresh = () => setStats(getAnalyticsSnapshot());
+    refresh();
+    const interval = window.setInterval(refresh, 1500);
+    return () => window.clearInterval(interval);
+  }, [activeTab]);
+
+  const topSearched = [...stats.bins]
+    .filter((metric) => metric.searchCount > 0)
+    .sort((a, b) => b.searchCount - a.searchCount)
+    .slice(0, 10);
+
+  const topOpened = [...stats.bins]
+    .filter((metric) => metric.openCount > 0)
+    .sort((a, b) => b.openCount - a.openCount)
+    .slice(0, 10);
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +125,17 @@ export const Settings: React.FC = () => {
             >
               <Shield className="w-5 h-5" />
               Avancé
+            </button>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                activeTab === 'stats'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              Statistiques
             </button>
           </div>
 
@@ -228,6 +260,98 @@ export const Settings: React.FC = () => {
                   >
                     Réinitialiser la base de données
                   </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'stats' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Statistiques d'usage</h2>
+                  <button
+                    onClick={() => {
+                      if (!window.confirm('Réinitialiser les statistiques locales ?')) return;
+                      resetAnalytics();
+                      setStats(getAnalyticsSnapshot());
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Réinitialiser
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Recherches totales</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.searchesTotal}</div>
+                  </div>
+                  <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Ouvertures totales</div>
+                    <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.opensTotal}</div>
+                  </div>
+                  <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Boîtes suivies</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.bins.length}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Boîtes les plus recherchées</h3>
+                    {topSearched.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Aucune recherche enregistrée.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {topSearched.map((metric, index) => (
+                          <div
+                            key={`search-${metric.binId}`}
+                            className="flex items-center justify-between gap-2 p-2 rounded-md bg-gray-50 dark:bg-gray-900/40"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {index + 1}. {metric.title}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {metric.drawerName || 'Tiroir inconnu'}
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                              {metric.searchCount}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Boîtes les plus ouvertes</h3>
+                    {topOpened.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Aucune ouverture enregistrée.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {topOpened.map((metric, index) => (
+                          <div
+                            key={`open-${metric.binId}`}
+                            className="flex items-center justify-between gap-2 p-2 rounded-md bg-gray-50 dark:bg-gray-900/40"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {index + 1}. {metric.title}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {metric.drawerName || 'Tiroir inconnu'}
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 shrink-0">
+                              {metric.openCount}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

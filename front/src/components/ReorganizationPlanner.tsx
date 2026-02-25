@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { apiClient } from '../services/api';
 import type { Category } from '../types/api';
+import ReorganizationPlanPreview from './ReorganizationPlanPreview';
 import {
   generateReorganizationPlan,
+  type ReorganizationMode,
   type ReorganizationPlan,
   type ReorganizationScope,
 } from '../utils/reorganization';
@@ -31,6 +33,7 @@ export default function ReorganizationPlanner() {
   } = useStore();
 
   const [scope, setScope] = useState<ReorganizationScope>('drawer');
+  const [mode, setMode] = useState<ReorganizationMode>('smart');
   const [plan, setPlan] = useState<ReorganizationPlan | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
@@ -62,11 +65,23 @@ export default function ReorganizationPlanner() {
     return map;
   }, [categories]);
 
+  const effectiveDrawers = useMemo(() => {
+    if (!currentDrawer) return drawers;
+
+    if (drawers.some((drawer) => drawer.drawer_id === currentDrawer.drawer_id)) {
+      return drawers.map((drawer) =>
+        drawer.drawer_id === currentDrawer.drawer_id ? currentDrawer : drawer
+      );
+    }
+
+    return [...drawers, currentDrawer];
+  }, [drawers, currentDrawer]);
+
   const handleGeneratePlan = () => {
     setError(null);
     setMessage(null);
 
-    if (drawers.length === 0) {
+    if (effectiveDrawers.length === 0) {
       setError('Aucun tiroir disponible.');
       return;
     }
@@ -78,13 +93,15 @@ export default function ReorganizationPlanner() {
 
     setIsGenerating(true);
     try {
-      const nextPlan = generateReorganizationPlan(drawers, {
+      const nextPlan = generateReorganizationPlan(effectiveDrawers, {
         scope,
+        mode,
         currentDrawerId: currentDrawer?.drawer_id,
         categoriesById,
       });
 
       setPlan(nextPlan);
+
       if (nextPlan.totalBins === 0) {
         setMessage('Aucune boîte à réorganiser dans ce périmètre.');
       } else if (nextPlan.moves.length === 0) {
@@ -167,33 +184,60 @@ export default function ReorganizationPlanner() {
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm p-5">
           <h2 className="text-xl sm:text-2xl font-bold">Réorganisation intelligente</h2>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-            Génère une proposition de rangement en respectant les dimensions, les couches et le support vertical.
+            Propose un rangement cohérent par contenu (catégorie, titre, description, articles, tailles) sans changer la taille des boîtes.
           </p>
 
-          <div className="mt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)] w-full lg:w-auto">
-              <button
-                onClick={() => setScope('drawer')}
-                disabled={!currentDrawer || isGenerating || isApplying}
-                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  scope === 'drawer'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                Tiroir courant
-              </button>
-              <button
-                onClick={() => setScope('global')}
-                disabled={isGenerating || isApplying}
-                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  scope === 'global'
-                    ? 'bg-indigo-500 text-white'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                Global (tous les tiroirs)
-              </button>
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)]">
+                <button
+                  onClick={() => setScope('drawer')}
+                  disabled={!currentDrawer || isGenerating || isApplying}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    scope === 'drawer'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Tiroir courant
+                </button>
+                <button
+                  onClick={() => setScope('global')}
+                  disabled={isGenerating || isApplying}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    scope === 'global'
+                      ? 'bg-indigo-500 text-white'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Global
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)]">
+                <button
+                  onClick={() => setMode('smart')}
+                  disabled={isGenerating || isApplying}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    mode === 'smart'
+                      ? 'bg-emerald-500 text-white'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Smart
+                </button>
+                <button
+                  onClick={() => setMode('by_layer')}
+                  disabled={isGenerating || isApplying}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    mode === 'by_layer'
+                      ? 'bg-orange-500 text-white'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Par couches
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -242,14 +286,18 @@ export default function ReorganizationPlanner() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <h3 className="text-lg font-semibold">Proposition générée</h3>
                 <span className="text-xs text-[var(--color-text-secondary)]">
-                  {formatDateTime(plan.generatedAt)}
+                  {formatDateTime(plan.generatedAt)} • Mode {plan.mode === 'smart' ? 'Smart' : 'Par couches'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
                 <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
                   <div className="text-xs text-[var(--color-text-secondary)]">Boîtes analysées</div>
                   <div className="text-xl font-bold">{plan.totalBins}</div>
+                </div>
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                  <div className="text-xs text-[var(--color-text-secondary)]">Placements</div>
+                  <div className="text-xl font-bold">{plan.placements.length}</div>
                 </div>
                 <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
                   <div className="text-xs text-[var(--color-text-secondary)]">Déplacements</div>
@@ -280,8 +328,10 @@ export default function ReorganizationPlanner() {
               </div>
             </div>
 
+            <ReorganizationPlanPreview plan={plan} drawers={effectiveDrawers} />
+
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm p-5">
-              <h3 className="text-lg font-semibold mb-3">Changements proposés</h3>
+              <h3 className="text-lg font-semibold mb-3">Changements proposés (avec raison)</h3>
               {plan.moves.length === 0 ? (
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   Aucun déplacement proposé.
@@ -293,9 +343,9 @@ export default function ReorganizationPlanner() {
                       key={`${move.binId}-${move.toDrawerId}-${move.toLayerId}-${move.toX}-${move.toY}`}
                       className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex flex-col gap-1">
                         <div className="font-medium">{move.title}</div>
-                        <div className="text-xs text-[var(--color-text-secondary)]">{move.reason}</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-300 font-medium">Pourquoi: {move.reason}</div>
                       </div>
                       <div className="text-xs text-[var(--color-text-secondary)] mt-1">
                         {move.fromDrawerName} • Couche {move.fromLayerIndex + 1} ({move.fromX}, {move.fromY})

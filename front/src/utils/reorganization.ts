@@ -1,6 +1,7 @@
 import type { Bin, Category, Drawer } from '../types/api';
 
 export type ReorganizationScope = 'drawer' | 'global';
+export type ReorganizationMode = 'smart' | 'by_layer';
 
 export interface PlanBinMove {
   binId: string;
@@ -20,6 +21,28 @@ export interface PlanBinMove {
   reason: string;
 }
 
+export interface PlanPlacement {
+  binId: string;
+  title: string;
+  widthUnits: number;
+  depthUnits: number;
+  heightUnits: number;
+  fromDrawerId: string;
+  fromDrawerName: string;
+  fromLayerId: string;
+  fromLayerIndex: number;
+  fromX: number;
+  fromY: number;
+  toDrawerId: string;
+  toDrawerName: string;
+  toLayerId: string;
+  toLayerIndex: number;
+  toX: number;
+  toY: number;
+  changed: boolean;
+  reason: string;
+}
+
 export interface PlanUnplacedBin {
   binId: string;
   title: string;
@@ -36,18 +59,28 @@ export interface DrawerPlanSummary {
 
 export interface ReorganizationPlan {
   scope: ReorganizationScope;
+  mode: ReorganizationMode;
   generatedAt: string;
   totalBins: number;
   unchanged: number;
   moves: PlanBinMove[];
+  placements: PlanPlacement[];
   unplaced: PlanUnplacedBin[];
   drawerSummaries: DrawerPlanSummary[];
 }
 
 export interface GeneratePlanOptions {
   scope: ReorganizationScope;
+  mode: ReorganizationMode;
   currentDrawerId?: string;
   categoriesById?: Record<string, Category>;
+}
+
+interface SizeSignature {
+  family: string;
+  diameter: number;
+  length: number;
+  raw: string;
 }
 
 interface BinMeta {
@@ -58,12 +91,13 @@ interface BinMeta {
   sourceLayerIndex: number;
   groupKey: string;
   tokens: string[];
+  sizeSignature: SizeSignature | null;
 }
 
 interface DrawerProfile {
-  drawer: Drawer;
   tokenCounts: Map<string, number>;
   groupCounts: Map<string, number>;
+  sizeFamilyCounts: Map<string, number>;
 }
 
 interface GroupAnchor {
@@ -81,7 +115,6 @@ interface PlacementCandidate {
   x: number;
   y: number;
   z: number;
-  reason: string;
 }
 
 interface DrawerState {
@@ -120,8 +153,44 @@ const buildBinTokens = (bin: Bin, categoryName?: string): string[] => {
   return tokenize(source);
 };
 
-const buildGroupKey = (bin: Bin, tokens: string[]): string => {
+const parseSizeSignature = (bin: Bin): SizeSignature | null => {
+  const itemsText = Array.isArray(bin.content.items) ? bin.content.items.join(' ') : '';
+  const source = `${bin.content.title || ''} ${bin.content.description || ''} ${itemsText}`;
+
+  const metricMatch = source.match(/\bM\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\b/i);
+  if (metricMatch) {
+    const diameter = parseFloat(metricMatch[1].replace(',', '.'));
+    const length = parseFloat(metricMatch[2].replace(',', '.'));
+    if (!Number.isNaN(diameter) && !Number.isNaN(length)) {
+      return {
+        family: `M${diameter}`,
+        diameter,
+        length,
+        raw: `M${diameter}x${length}`,
+      };
+    }
+  }
+
+  const genericMatch = source.match(/\b(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\b/i);
+  if (genericMatch) {
+    const diameter = parseFloat(genericMatch[1].replace(',', '.'));
+    const length = parseFloat(genericMatch[2].replace(',', '.'));
+    if (!Number.isNaN(diameter) && !Number.isNaN(length)) {
+      return {
+        family: `S${diameter}`,
+        diameter,
+        length,
+        raw: `${diameter}x${length}`,
+      };
+    }
+  }
+
+  return null;
+};
+
+const buildGroupKey = (bin: Bin, sizeSignature: SizeSignature | null, tokens: string[]): string => {
   if (bin.category_id) return `cat:${bin.category_id}`;
+  if (sizeSignature) return `size:${sizeSignature.family}`;
   if (tokens.length > 0) return `kw:${tokens[0]}`;
   return 'misc:autres';
 };
@@ -139,19 +208,24 @@ const buildProfiles = (
   for (const drawer of drawers) {
     const tokenCounts = new Map<string, number>();
     const groupCounts = new Map<string, number>();
+    const sizeFamilyCounts = new Map<string, number>();
 
     drawer.layers.forEach((layer) => {
       layer.bins.forEach((bin) => {
         const categoryName = bin.category_id ? categoriesById[bin.category_id]?.name : undefined;
         const tokens = buildBinTokens(bin, categoryName);
-        const groupKey = buildGroupKey(bin, tokens);
+        const sizeSignature = parseSizeSignature(bin);
+        const groupKey = buildGroupKey(bin, sizeSignature, tokens);
 
         incrementMapCount(groupCounts, groupKey, 1);
         tokens.forEach((token) => incrementMapCount(tokenCounts, token, 1));
+        if (sizeSignature) {
+          incrementMapCount(sizeFamilyCounts, sizeSignature.family, 1);
+        }
       });
     });
 
-    profiles.set(drawer.drawer_id, { drawer, tokenCounts, groupCounts });
+    profiles.set(drawer.drawer_id, { tokenCounts, groupCounts, sizeFamilyCounts });
   }
 
   return profiles;
@@ -273,21 +347,18 @@ const markPlacement = (
   });
 };
 
-const getCategoryReason = (groupKey: string, categoriesById: Record<string, Category>): string | null => {
-  if (!groupKey.startsWith('cat:')) return null;
-  const categoryId = groupKey.slice(4);
-  const categoryName = categoriesById[categoryId]?.name;
-  if (!categoryName) return 'Regroupement par catégorie';
-  return `Regroupement catégorie: ${categoryName}`;
-};
-
 const drawerCandidateScore = (
   binMeta: BinMeta,
   candidateDrawerId: string,
-  profiles: Map<string, DrawerProfile>
+  profiles: Map<string, DrawerProfile>,
+  mode: ReorganizationMode
 ): number => {
   const profile = profiles.get(candidateDrawerId);
   if (!profile) return Number.NEGATIVE_INFINITY;
+
+  if (mode === 'by_layer') {
+    return candidateDrawerId === binMeta.sourceDrawerId ? 1 : Number.NEGATIVE_INFINITY;
+  }
 
   const groupBoost = (profile.groupCounts.get(binMeta.groupKey) || 0) * 6;
 
@@ -297,23 +368,37 @@ const drawerCandidateScore = (
     tokenOverlap += Math.log1p(count);
   }
 
+  const sizeBoost = binMeta.sizeSignature
+    ? (profile.sizeFamilyCounts.get(binMeta.sizeSignature.family) || 0) * 3
+    : 0;
+
   const sameDrawerBoost = candidateDrawerId === binMeta.sourceDrawerId ? 0.5 : 0;
 
-  return groupBoost + tokenOverlap + sameDrawerBoost;
+  return groupBoost + tokenOverlap + sizeBoost + sameDrawerBoost;
 };
 
 const findPlacementInDrawer = (
   state: DrawerState,
   binMeta: BinMeta,
-  categoriesById: Record<string, Category>
+  mode: ReorganizationMode
 ): PlacementCandidate | null => {
   const height = Math.max(1, binMeta.bin.height_units || 1);
   const maxStartLayer = state.orderedLayers.length - height;
   if (maxStartLayer < 0) return null;
 
+  const zCandidates: number[] = [];
+  if (mode === 'by_layer') {
+    const z = Math.min(Math.max(0, binMeta.sourceLayerIndex), maxStartLayer);
+    zCandidates.push(z);
+  } else {
+    for (let z = 0; z <= maxStartLayer; z += 1) {
+      zCandidates.push(z);
+    }
+  }
+
   let best: { x: number; y: number; z: number; score: number } | null = null;
 
-  for (let z = 0; z <= maxStartLayer; z += 1) {
+  for (const z of zCandidates) {
     for (let y = 0; y <= state.drawer.depth_units - binMeta.bin.depth_units; y += 1) {
       for (let x = 0; x <= state.drawer.width_units - binMeta.bin.width_units; x += 1) {
         if (!canPlaceAt(state, binMeta.bin, x, y, z)) continue;
@@ -328,13 +413,6 @@ const findPlacementInDrawer = (
 
   if (!best) return null;
 
-  const categoryReason = getCategoryReason(binMeta.groupKey, categoriesById);
-  const reason =
-    categoryReason ||
-    (binMeta.tokens.length > 0
-      ? `Similarité contenu: ${binMeta.tokens.slice(0, 2).join(', ')}`
-      : 'Optimisation de l’espace');
-
   return {
     drawerId: state.drawer.drawer_id,
     drawerName: state.drawer.name,
@@ -343,7 +421,6 @@ const findPlacementInDrawer = (
     x: best.x,
     y: best.y,
     z: best.z,
-    reason,
   };
 };
 
@@ -354,11 +431,13 @@ const flattenBins = (
   const binMetas: BinMeta[] = [];
 
   drawers.forEach((drawer) => {
-    drawer.layers.forEach((layer, layerIndex) => {
+    const orderedLayers = [...drawer.layers].sort((a, b) => a.z_index - b.z_index);
+    orderedLayers.forEach((layer, layerIndex) => {
       layer.bins.forEach((bin) => {
         const categoryName = bin.category_id ? categoriesById[bin.category_id]?.name : undefined;
         const tokens = buildBinTokens(bin, categoryName);
-        const groupKey = buildGroupKey(bin, tokens);
+        const sizeSignature = parseSizeSignature(bin);
+        const groupKey = buildGroupKey(bin, sizeSignature, tokens);
 
         binMetas.push({
           bin,
@@ -368,6 +447,7 @@ const flattenBins = (
           sourceLayerIndex: layerIndex,
           groupKey,
           tokens,
+          sizeSignature,
         });
       });
     });
@@ -386,6 +466,15 @@ const sortBinsForPlacement = (bins: BinMeta[]): BinMeta[] => {
     const groupDiff = (groupFrequency.get(b.groupKey) || 0) - (groupFrequency.get(a.groupKey) || 0);
     if (groupDiff !== 0) return groupDiff;
 
+    if (a.groupKey === b.groupKey && a.sizeSignature && b.sizeSignature) {
+      if (a.sizeSignature.diameter !== b.sizeSignature.diameter) {
+        return a.sizeSignature.diameter - b.sizeSignature.diameter;
+      }
+      if (a.sizeSignature.length !== b.sizeSignature.length) {
+        return a.sizeSignature.length - b.sizeSignature.length;
+      }
+    }
+
     const volumeA = a.bin.width_units * a.bin.depth_units * Math.max(1, a.bin.height_units || 1);
     const volumeB = b.bin.width_units * b.bin.depth_units * Math.max(1, b.bin.height_units || 1);
     if (volumeB !== volumeA) return volumeB - volumeA;
@@ -397,10 +486,10 @@ const sortBinsForPlacement = (bins: BinMeta[]): BinMeta[] => {
 const buildDrawerSummary = (
   targetDrawers: Drawer[],
   moves: PlanBinMove[],
-  allPlacements: Array<{ binMeta: BinMeta; placement: PlacementCandidate }>
+  placements: PlanPlacement[]
 ): DrawerPlanSummary[] => {
   return targetDrawers.map((drawer) => {
-    const placed = allPlacements.filter((entry) => entry.placement.drawerId === drawer.drawer_id).length;
+    const placed = placements.filter((entry) => entry.toDrawerId === drawer.drawer_id).length;
     const movedIn = moves.filter(
       (move) => move.toDrawerId === drawer.drawer_id && move.fromDrawerId !== drawer.drawer_id
     ).length;
@@ -418,6 +507,42 @@ const buildDrawerSummary = (
   });
 };
 
+const buildReason = (
+  binMeta: BinMeta,
+  placement: PlacementCandidate,
+  mode: ReorganizationMode,
+  profiles: Map<string, DrawerProfile>,
+  categoriesById: Record<string, Category>
+): string => {
+  const targetProfile = profiles.get(placement.drawerId);
+  const groupCount = targetProfile ? (targetProfile.groupCounts.get(binMeta.groupKey) || 0) : 0;
+  const excludesSelf = placement.drawerId === binMeta.sourceDrawerId ? 1 : 0;
+  const similarCount = Math.max(0, groupCount - excludesSelf);
+  const coherenceHint =
+    similarCount > 0
+      ? `${similarCount} boîte${similarCount > 1 ? 's' : ''} voisine${similarCount > 1 ? 's' : ''}`
+      : "creation d'un regroupement coherent";
+
+  const modePrefix = mode === 'by_layer' ? 'Intra-couche' : 'Optimisation';
+
+  if (binMeta.sizeSignature) {
+    return `${modePrefix} dimensionnelle ${binMeta.sizeSignature.raw} (${coherenceHint})`;
+  }
+
+  if (binMeta.groupKey.startsWith('cat:')) {
+    const categoryId = binMeta.groupKey.slice(4);
+    const categoryName = categoriesById[categoryId]?.name || 'Catégorie';
+    return `${modePrefix} par catégorie ${categoryName} (${coherenceHint})`;
+  }
+
+  const uniqueTokens = Array.from(new Set(binMeta.tokens));
+  if (uniqueTokens.length > 0) {
+    return `${modePrefix} thématique: ${uniqueTokens.slice(0, 3).join(', ')}`;
+  }
+
+  return `${modePrefix} de l’espace et cohérence locale`;
+};
+
 export const generateReorganizationPlan = (
   drawers: Drawer[],
   options: GeneratePlanOptions
@@ -432,10 +557,12 @@ export const generateReorganizationPlan = (
   if (targetDrawers.length === 0) {
     return {
       scope: options.scope,
+      mode: options.mode,
       generatedAt: new Date().toISOString(),
       totalBins: 0,
       unchanged: 0,
       moves: [],
+      placements: [],
       unplaced: [],
       drawerSummaries: [],
     };
@@ -451,15 +578,18 @@ export const generateReorganizationPlan = (
   });
 
   const moves: PlanBinMove[] = [];
+  const placements: PlanPlacement[] = [];
   const unplaced: PlanUnplacedBin[] = [];
   let unchanged = 0;
-
-  const allPlacements: Array<{ binMeta: BinMeta; placement: PlacementCandidate }> = [];
 
   for (const binMeta of binMetas) {
     const candidateDrawers = targetDrawers
       .filter((drawer) => {
         const maxLayers = drawer.layers.length;
+        if (options.mode === 'by_layer' && drawer.drawer_id !== binMeta.sourceDrawerId) {
+          return false;
+        }
+
         return (
           binMeta.bin.width_units <= drawer.width_units &&
           binMeta.bin.depth_units <= drawer.depth_units &&
@@ -468,8 +598,9 @@ export const generateReorganizationPlan = (
       })
       .map((drawer) => ({
         drawer,
-        score: drawerCandidateScore(binMeta, drawer.drawer_id, profiles),
+        score: drawerCandidateScore(binMeta, drawer.drawer_id, profiles, options.mode),
       }))
+      .filter((entry) => Number.isFinite(entry.score))
       .sort((a, b) => b.score - a.score);
 
     if (candidateDrawers.length === 0) {
@@ -487,7 +618,7 @@ export const generateReorganizationPlan = (
       const state = drawerStates.get(candidate.drawer.drawer_id);
       if (!state) continue;
 
-      const placement = findPlacementInDrawer(state, binMeta, categoriesById);
+      const placement = findPlacementInDrawer(state, binMeta, options.mode);
       if (!placement) continue;
 
       markPlacement(
@@ -499,13 +630,35 @@ export const generateReorganizationPlan = (
         binMeta.groupKey
       );
 
-      allPlacements.push({ binMeta, placement });
-
       const hasChanged =
         placement.drawerId !== binMeta.sourceDrawerId ||
         placement.layerId !== binMeta.sourceLayerId ||
         placement.x !== binMeta.bin.x_grid ||
         placement.y !== binMeta.bin.y_grid;
+
+      const reason = buildReason(binMeta, placement, options.mode, profiles, categoriesById);
+
+      placements.push({
+        binId: binMeta.bin.bin_id,
+        title: binMeta.bin.content.title || 'Sans titre',
+        widthUnits: binMeta.bin.width_units,
+        depthUnits: binMeta.bin.depth_units,
+        heightUnits: Math.max(1, binMeta.bin.height_units || 1),
+        fromDrawerId: binMeta.sourceDrawerId,
+        fromDrawerName: binMeta.sourceDrawerName,
+        fromLayerId: binMeta.sourceLayerId,
+        fromLayerIndex: binMeta.sourceLayerIndex,
+        fromX: binMeta.bin.x_grid,
+        fromY: binMeta.bin.y_grid,
+        toDrawerId: placement.drawerId,
+        toDrawerName: placement.drawerName,
+        toLayerId: placement.layerId,
+        toLayerIndex: placement.layerIndex,
+        toX: placement.x,
+        toY: placement.y,
+        changed: hasChanged,
+        reason,
+      });
 
       if (hasChanged) {
         moves.push({
@@ -523,7 +676,7 @@ export const generateReorganizationPlan = (
           toLayerIndex: placement.layerIndex,
           toX: placement.x,
           toY: placement.y,
-          reason: placement.reason,
+          reason,
         });
       } else {
         unchanged += 1;
@@ -542,14 +695,16 @@ export const generateReorganizationPlan = (
     }
   }
 
-  const drawerSummaries = buildDrawerSummary(targetDrawers, moves, allPlacements);
+  const drawerSummaries = buildDrawerSummary(targetDrawers, moves, placements);
 
   return {
     scope: options.scope,
+    mode: options.mode,
     generatedAt: new Date().toISOString(),
     totalBins: binMetas.length,
     unchanged,
     moves,
+    placements,
     unplaced,
     drawerSummaries,
   };

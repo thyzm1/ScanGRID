@@ -125,6 +125,11 @@ export const useStore = create<AppState>((set) => ({
        const shouldPreserve = preserveLayerIndex || idsMatch;
        
        const nextLayerIndex = shouldPreserve ? state.currentLayerIndex : 0;
+       const syncedDrawers = drawer
+         ? state.drawers.some((d) => d.drawer_id === drawer.drawer_id)
+           ? state.drawers.map((d) => (d.drawer_id === drawer.drawer_id ? drawer : d))
+           : [...state.drawers, drawer]
+         : state.drawers;
 
       // Persist to local storage
       if (drawer) {
@@ -136,6 +141,7 @@ export const useStore = create<AppState>((set) => ({
       }
 
       return { 
+        drawers: syncedDrawers,
         currentDrawer: drawer, 
         currentLayerIndex: nextLayerIndex, 
         // Only clear selection if switching drawers completely
