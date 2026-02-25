@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text, RoundedBox } from '@react-three/drei';
 import { useStore } from '../store/useStore';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Bin } from '../types/api';
 
 const GRID_CELL_SIZE = 0.42; // 42mm per Gridfinity unit in 3D space
@@ -11,11 +11,14 @@ interface BinMeshProps {
   bin: Bin;
   layerIndex: number;
   color: string;
+  isSearched: boolean;
+  isDimmed: boolean;
   onClick: (bin: Bin) => void;
 }
 
-function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
+function BinMesh({ bin, layerIndex, color, isSearched, isDimmed, onClick }: BinMeshProps) {
   const binHeight = (bin.height_units || 1) * BIN_HEIGHT;
+  const labelColor = isSearched ? '#ffffff' : isDimmed ? '#d1d5db' : '#f9fafb';
   
   return (
     <group>
@@ -46,10 +49,25 @@ function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
             color={bin.color || color}
             metalness={0.2}
             roughness={0.3}
-            opacity={0.95}
+            opacity={isDimmed ? 0.32 : 0.95}
             transparent
+            emissive={isSearched ? '#60a5fa' : '#000000'}
+            emissiveIntensity={isSearched ? 0.65 : 0}
           />
         </RoundedBox>
+        {isSearched && (
+          <RoundedBox
+            args={[
+              bin.width_units * GRID_CELL_SIZE + 0.01,
+              binHeight + 0.01,
+              bin.depth_units * GRID_CELL_SIZE + 0.01,
+            ]}
+            radius={0.03}
+            smoothness={3}
+          >
+            <meshBasicMaterial color="#93c5fd" transparent opacity={0.18} />
+          </RoundedBox>
+        )}
       </group>
       
       {/* Label text on top */}
@@ -61,7 +79,7 @@ function BinMesh({ bin, layerIndex, color, onClick }: BinMeshProps) {
         ]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={0.08}
-        color="white"
+        color={labelColor}
         anchorX="center"
         anchorY="middle"
         maxWidth={bin.width_units * GRID_CELL_SIZE * 0.9}
@@ -77,8 +95,13 @@ interface Viewer3DProps {
 }
 
 export default function Viewer3D({ onBinClick }: Viewer3DProps) {
-  const { currentDrawer, currentLayerIndex } = useStore();
+  const { currentDrawer, currentLayerIndex, searchedBinId } = useStore();
   const [selectedLayer, setSelectedLayer] = useState<number | 'all'>('all');
+
+  useEffect(() => {
+    if (!searchedBinId) return;
+    setSelectedLayer('all');
+  }, [searchedBinId]);
 
   if (!currentDrawer) {
     return (
@@ -99,6 +122,8 @@ export default function Viewer3D({ onBinClick }: Viewer3DProps) {
   const visibleLayers = selectedLayer === 'all' 
     ? currentDrawer.layers 
     : currentDrawer.layers.filter((_, idx) => idx === selectedLayer);
+
+  const hasSearch = Boolean(searchedBinId);
 
   return (
     <div className="h-full w-full bg-[var(--color-bg-secondary)] rounded-lg overflow-hidden relative">
@@ -156,6 +181,8 @@ export default function Viewer3D({ onBinClick }: Viewer3DProps) {
                   ? colors[originalIdx % colors.length]
                   : '#888888' // Dim other layers if desired, or keep color
               }
+              isSearched={searchedBinId === bin.bin_id}
+              isDimmed={hasSearch && searchedBinId !== bin.bin_id}
               onClick={onBinClick}
             />
           ));
@@ -188,6 +215,11 @@ export default function Viewer3D({ onBinClick }: Viewer3DProps) {
         <div className="text-xs opacity-60 mt-1">
           Molette: Zoom • Drag: Rotation
         </div>
+        {hasSearch && (
+          <div className="text-xs text-blue-200 mt-1">
+            Recherche active: boîte mise en évidence
+          </div>
+        )}
       </div>
 
        {/* Layer Selector Tool */}

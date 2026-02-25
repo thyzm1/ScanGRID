@@ -88,6 +88,7 @@ export interface BinUpdateRequest {
   width_units?: number;
   depth_units?: number;
   height_units?: number;
+  layer_id?: string;
   content?: Partial<BinContent>;
   color?: string;
   is_hole?: boolean;

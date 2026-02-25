@@ -7,6 +7,7 @@ import Viewer3D from './components/Viewer3D';
 import { Settings } from './components/Settings';
 import SearchBar from './components/SearchBar';
 import BinEditorModal from './components/BinEditorModal';
+import ReorganizationPlanner from './components/ReorganizationPlanner';
 import { apiClient } from './services/api';
 import type { Bin } from './types/api';
 
@@ -249,6 +250,20 @@ function App() {
           )}
 
           <button
+            onClick={() => setViewMode(viewMode === 'organizer' ? '2D' : 'organizer')}
+            className={`p-2 rounded-lg transition-colors ${
+              viewMode === 'organizer'
+                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+            }`}
+            title="Réorganisation intelligente"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h11m0 0l-3-3m3 3l-3 3M20 17H9m0 0l3-3m-3 3l3 3" />
+            </svg>
+          </button>
+
+          <button
             onClick={() => setViewMode(viewMode === 'settings' ? '2D' : 'settings')}
             className={`p-2 rounded-lg transition-colors ${
               viewMode === 'settings'
@@ -300,6 +315,8 @@ function App() {
         <main className="flex-1 overflow-hidden relative flex flex-col">
           {viewMode === 'settings' ? (
             <Settings />
+          ) : viewMode === 'organizer' ? (
+            <ReorganizationPlanner />
           ) : currentDrawer ? (
             <>
               {/* View Area */}
