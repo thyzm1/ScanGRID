@@ -14,6 +14,10 @@ class BinContentSchema(BaseModel):
     items: Optional[List[str]] = Field(None, description="Liste des articles contenus")
     photos: Optional[List[str]] = Field(None, description="URLs des photos")
     icon: Optional[str] = Field(None, description="Icône RemixIcon ou Emoji")
+    can_place_on_top: Optional[bool] = Field(
+        True,
+        description="Indique si une autre boîte peut être posée au-dessus"
+    )
 
 
 # ============= SCHEMAS POUR CATEGORIE =============

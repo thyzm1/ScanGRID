@@ -27,6 +27,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const [widthUnits, setWidthUnits] = useState(1);
   const [depthUnits, setDepthUnits] = useState(1);
   const [heightUnits, setHeightUnits] = useState(1);
+  const [canPlaceOnTop, setCanPlaceOnTop] = useState(true);
   const [isImproving, setIsImproving] = useState(false);
   const [improvementProgress, setImprovementProgress] = useState(0);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -71,6 +72,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       setWidthUnits(bin.width_units || 1);
       setDepthUnits(bin.depth_units || 1);
       setHeightUnits(bin.height_units || 1);
+      setCanPlaceOnTop(bin.content.can_place_on_top ?? true);
       // If bin.content.icon exists, use it.
       // Note: we need to update types/api.ts to include icon in BinContent if not already there.
       // But assuming it is or allows extra props.
@@ -99,6 +101,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
       description,
       items,
       photos,
+      can_place_on_top: canPlaceOnTop,
       icon, 
     };
 
@@ -411,6 +414,43 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             <p className="text-xs text-[var(--color-text-secondary)] mt-2">
               💡 Une boîte de hauteur 2 occupera 2 couches verticalement
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">Empilage au-dessus</label>
+            <button
+              type="button"
+              onClick={() => setCanPlaceOnTop((prev) => !prev)}
+              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                canPlaceOnTop
+                  ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20'
+                  : 'border-amber-300 bg-amber-50/80 dark:bg-amber-900/20'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">
+                    {canPlaceOnTop ? 'On peut poser une boîte au-dessus' : 'Aucune boîte autorisée au-dessus'}
+                  </div>
+                  <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                    {canPlaceOnTop
+                      ? 'Comportement par défaut: cette boîte peut servir de support.'
+                      : "Priorisée en couche haute pendant la réorganisation intelligente."}
+                  </div>
+                </div>
+                <div
+                  className={`w-11 h-6 rounded-full relative transition-colors ${
+                    canPlaceOnTop ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                      canPlaceOnTop ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </div>
+              </div>
+            </button>
           </div>
 
            {/* Category & Icon - Third */}

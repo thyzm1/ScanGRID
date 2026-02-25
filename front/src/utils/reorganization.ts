@@ -92,6 +92,7 @@ interface BinMeta {
   groupKey: string;
   tokens: string[];
   sizeSignature: SizeSignature | null;
+  canPlaceOnTop: boolean;
 }
 
 interface DrawerProfile {
@@ -121,6 +122,7 @@ interface DrawerState {
   drawer: Drawer;
   orderedLayers: { layer_id: string; z_index: number }[];
   occupancy: boolean[][][];
+  supportSurface: boolean[][][];
   groupAnchors: Map<string, GroupAnchor>;
 }
 
@@ -195,6 +197,10 @@ const buildGroupKey = (bin: Bin, sizeSignature: SizeSignature | null, tokens: st
   return 'misc:autres';
 };
 
+const canSupportOtherBins = (bin: Bin): boolean => {
+  return bin.content.can_place_on_top !== false;
+};
+
 const incrementMapCount = (map: Map<string, number>, key: string, inc = 1) => {
   map.set(key, (map.get(key) || 0) + inc);
 };
@@ -242,11 +248,17 @@ const makeDrawerState = (drawer: Drawer): DrawerState => {
       Array.from({ length: drawer.depth_units }, () => false)
     )
   );
+  const supportSurface: boolean[][][] = Array.from({ length: layerCount }, () =>
+    Array.from({ length: drawer.width_units }, () =>
+      Array.from({ length: drawer.depth_units }, () => false)
+    )
+  );
 
   return {
     drawer,
     orderedLayers,
     occupancy,
+    supportSurface,
     groupAnchors: new Map<string, GroupAnchor>(),
   };
 };
@@ -281,7 +293,7 @@ const canPlaceAt = (
   if (z > 0) {
     for (let xx = x; xx < x + width; xx += 1) {
       for (let yy = y; yy < y + depth; yy += 1) {
-        if (!state.occupancy[z - 1][xx][yy]) {
+        if (!state.supportSurface[z - 1][xx][yy]) {
           return false;
         }
       }
@@ -296,9 +308,12 @@ const computePlacementScore = (
   groupKey: string,
   x: number,
   y: number,
-  z: number
+  z: number,
+  preferUpperLayers: boolean,
+  maxStartLayer: number
 ): number => {
-  let score = z * 100000 + y * state.drawer.width_units + x;
+  const zCost = preferUpperLayers ? maxStartLayer - z : z;
+  let score = zCost * 100000 + y * state.drawer.width_units + x;
   const anchor = state.groupAnchors.get(groupKey);
 
   if (anchor) {
@@ -318,7 +333,8 @@ const markPlacement = (
   x: number,
   y: number,
   z: number,
-  groupKey: string
+  groupKey: string,
+  canPlaceOnTop: boolean
 ) => {
   const width = bin.width_units;
   const depth = bin.depth_units;
@@ -329,6 +345,13 @@ const markPlacement = (
       for (let yy = y; yy < y + depth; yy += 1) {
         state.occupancy[zz][xx][yy] = true;
       }
+    }
+  }
+
+  const topLayer = z + height - 1;
+  for (let xx = x; xx < x + width; xx += 1) {
+    for (let yy = y; yy < y + depth; yy += 1) {
+      state.supportSurface[topLayer][xx][yy] = canPlaceOnTop;
     }
   }
 
@@ -385,14 +408,21 @@ const findPlacementInDrawer = (
   const height = Math.max(1, binMeta.bin.height_units || 1);
   const maxStartLayer = state.orderedLayers.length - height;
   if (maxStartLayer < 0) return null;
+  const preferUpperLayers = mode === 'smart' && !binMeta.canPlaceOnTop;
 
   const zCandidates: number[] = [];
   if (mode === 'by_layer') {
     const z = Math.min(Math.max(0, binMeta.sourceLayerIndex), maxStartLayer);
     zCandidates.push(z);
   } else {
-    for (let z = 0; z <= maxStartLayer; z += 1) {
-      zCandidates.push(z);
+    if (preferUpperLayers) {
+      for (let z = maxStartLayer; z >= 0; z -= 1) {
+        zCandidates.push(z);
+      }
+    } else {
+      for (let z = 0; z <= maxStartLayer; z += 1) {
+        zCandidates.push(z);
+      }
     }
   }
 
@@ -403,7 +433,15 @@ const findPlacementInDrawer = (
       for (let x = 0; x <= state.drawer.width_units - binMeta.bin.width_units; x += 1) {
         if (!canPlaceAt(state, binMeta.bin, x, y, z)) continue;
 
-        const score = computePlacementScore(state, binMeta.groupKey, x, y, z);
+        const score = computePlacementScore(
+          state,
+          binMeta.groupKey,
+          x,
+          y,
+          z,
+          preferUpperLayers,
+          maxStartLayer
+        );
         if (!best || score < best.score) {
           best = { x, y, z, score };
         }
@@ -448,6 +486,7 @@ const flattenBins = (
           groupKey,
           tokens,
           sizeSignature,
+          canPlaceOnTop: canSupportOtherBins(bin),
         });
       });
     });
@@ -463,6 +502,10 @@ const sortBinsForPlacement = (bins: BinMeta[]): BinMeta[] => {
   });
 
   return [...bins].sort((a, b) => {
+    if (a.canPlaceOnTop !== b.canPlaceOnTop) {
+      return a.canPlaceOnTop ? -1 : 1;
+    }
+
     const groupDiff = (groupFrequency.get(b.groupKey) || 0) - (groupFrequency.get(a.groupKey) || 0);
     if (groupDiff !== 0) return groupDiff;
 
@@ -524,6 +567,10 @@ const buildReason = (
       : "creation d'un regroupement coherent";
 
   const modePrefix = mode === 'by_layer' ? 'Intra-couche' : 'Optimisation';
+
+  if (mode === 'smart' && !binMeta.canPlaceOnTop) {
+    return `${modePrefix} non empilable: priorisee sur couche haute`;
+  }
 
   if (binMeta.sizeSignature) {
     return `${modePrefix} dimensionnelle ${binMeta.sizeSignature.raw} (${coherenceHint})`;
@@ -627,7 +674,8 @@ export const generateReorganizationPlan = (
         placement.x,
         placement.y,
         placement.z,
-        binMeta.groupKey
+        binMeta.groupKey,
+        binMeta.canPlaceOnTop
       );
 
       const hasChanged =

@@ -125,7 +125,14 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       let y = 0;
       for (let j = 0; j < currentDrawer.depth_units; j++) {
         for (let i = 0; i < currentDrawer.width_units; i++) {
-          if (!isPositionOccupied(i, j, rest.width_units, rest.depth_units)) {
+          const check = validatePlacement3D(
+            i,
+            j,
+            rest.width_units,
+            rest.depth_units,
+            Math.max(1, rest.height_units || 1)
+          );
+          if (check.valid) {
             x = i;
             y = j;
             foundPosition = true;
@@ -256,6 +263,18 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const createNewBin = async (binData: any) => {
       if (!currentDrawer) return;
 
+      const placementCheck = validatePlacement3D(
+        binData.x_grid,
+        binData.y_grid,
+        binData.width_units,
+        binData.depth_units,
+        Math.max(1, binData.height_units || 1)
+      );
+      if (!placementCheck.valid) {
+        alert(placementCheck.reason || 'Placement impossible');
+        return;
+      }
+
       const tempId = uuidv4();
       const optimisticBin: Bin = { bin_id: tempId, ...binData };
       
@@ -383,6 +402,11 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   });
   
   const placedBins = visibleBins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
+  const placedBinsAllLayers = currentDrawer.layers.flatMap((layer, layerIdx) =>
+    layer.bins
+      .filter((b) => b.x_grid >= 0 && b.y_grid >= 0)
+      .map((bin) => ({ bin, layerIndex: layerIdx }))
+  );
   const unplacedBins = visibleBins.filter(b => b.x_grid < 0 || b.y_grid < 0);
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
@@ -402,20 +426,96 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     static: editMode === 'view', // Static in view mode
   }));
 
-  // Check collision
-  const isPositionOccupied = (
+  const overlaps2D = (
+    xA: number,
+    yA: number,
+    wA: number,
+    dA: number,
+    xB: number,
+    yB: number,
+    wB: number,
+    dB: number
+  ) => {
+    const overlapX = xA < xB + wB && xA + wA > xB;
+    const overlapY = yA < yB + dB && yA + dA > yB;
+    return overlapX && overlapY;
+  };
+
+  const overlapsRange = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+    return aStart <= bEnd && bStart <= aEnd;
+  };
+
+  const validatePlacement3D = (
     x: number,
     y: number,
     w: number,
-    h: number,
+    d: number,
+    heightUnits: number,
     excludeBinId?: string
-  ): boolean => {
-    return placedBins.some((bin) => {
-      if (bin.bin_id === excludeBinId) return false;
-      const overlapX = x < bin.x_grid + bin.width_units && x + w > bin.x_grid;
-      const overlapY = y < bin.y_grid + bin.depth_units && y + h > bin.y_grid;
-      return overlapX && overlapY;
-    });
+  ): { valid: boolean; reason?: string } => {
+    const targetHeight = Math.max(1, heightUnits || 1);
+    const targetLayerStart = currentLayerIndex;
+    const targetLayerEnd = targetLayerStart + targetHeight - 1;
+
+    if (x < 0 || y < 0 || x + w > currentDrawer.width_units || y + d > currentDrawer.depth_units) {
+      return { valid: false, reason: 'Position hors limites du tiroir' };
+    }
+
+    if (targetLayerEnd >= currentDrawer.layers.length) {
+      return { valid: false, reason: 'Hauteur impossible: dépasse le nombre de couches disponibles' };
+    }
+
+    for (const { bin: otherBin, layerIndex: otherLayerStart } of placedBinsAllLayers) {
+      if (otherBin.bin_id === excludeBinId) continue;
+
+      const otherHeight = Math.max(1, otherBin.height_units || 1);
+      const otherLayerEnd = otherLayerStart + otherHeight - 1;
+
+      if (!overlapsRange(targetLayerStart, targetLayerEnd, otherLayerStart, otherLayerEnd)) continue;
+      if (!overlaps2D(x, y, w, d, otherBin.x_grid, otherBin.y_grid, otherBin.width_units, otherBin.depth_units)) continue;
+
+      return { valid: false, reason: 'Collision détectée (superposition verticale impossible)' };
+    }
+
+    if (targetLayerStart > 0) {
+      const layerBelowTop = targetLayerStart - 1;
+      const hasTopCoverage = Array.from({ length: currentDrawer.width_units }, () =>
+        Array.from({ length: currentDrawer.depth_units }, () => false)
+      );
+      const hasSupport = Array.from({ length: currentDrawer.width_units }, () =>
+        Array.from({ length: currentDrawer.depth_units }, () => false)
+      );
+
+      for (const { bin: belowBin, layerIndex: belowLayerStart } of placedBinsAllLayers) {
+        if (belowBin.bin_id === excludeBinId) continue;
+
+        const belowTop = belowLayerStart + Math.max(1, belowBin.height_units || 1) - 1;
+        if (belowTop !== layerBelowTop) continue;
+
+        const canSupport = belowBin.content.can_place_on_top !== false;
+        for (let xx = belowBin.x_grid; xx < belowBin.x_grid + belowBin.width_units; xx += 1) {
+          for (let yy = belowBin.y_grid; yy < belowBin.y_grid + belowBin.depth_units; yy += 1) {
+            if (xx < 0 || yy < 0 || xx >= currentDrawer.width_units || yy >= currentDrawer.depth_units) continue;
+            hasTopCoverage[xx][yy] = true;
+            if (canSupport) {
+              hasSupport[xx][yy] = true;
+            }
+          }
+        }
+      }
+
+      for (let xx = x; xx < x + w; xx += 1) {
+        for (let yy = y; yy < y + d; yy += 1) {
+          if (hasSupport[xx][yy]) continue;
+          if (hasTopCoverage[xx][yy]) {
+            return { valid: false, reason: "Impossible: la boîte en dessous n'autorise pas de boîte au-dessus" };
+          }
+          return { valid: false, reason: 'Impossible: pas de support sous cette position' };
+        }
+      }
+    }
+
+    return { valid: true };
   };
 
   // Handle move to dock
@@ -455,9 +555,16 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       const newX = Math.min(Math.max(0, Math.round(item.x)), currentDrawer.width_units - bin.width_units);
       const newY = Math.min(Math.max(0, Math.round(item.y)), currentDrawer.depth_units - bin.depth_units);
 
-      // Check collision
-      if (isPositionOccupied(newX, newY, bin.width_units, bin.depth_units, binId)) {
-          alert('Position occupée');
+      const placementCheck = validatePlacement3D(
+        newX,
+        newY,
+        bin.width_units,
+        bin.depth_units,
+        Math.max(1, bin.height_units || 1),
+        binId
+      );
+      if (!placementCheck.valid) {
+          alert(placementCheck.reason || 'Position impossible');
           return;
       }
 
@@ -488,66 +595,69 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     (newLayout: Layout[]) => {
       if (editMode === 'view') return; // Locked in view mode
 
-      // Process layout changes and trigger updates
+      const sanitizedById = new Map<string, { x: number; y: number; w: number; h: number }>();
+
       newLayout.forEach((item) => {
-          if (item.i === '__dropping-elem__') return;
+        if (item.i === '__dropping-elem__') return;
 
-          const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
-          if (!existingBin) return;
+        const existingBin = currentLayer.bins.find((b) => b.bin_id === item.i);
+        if (!existingBin) return;
 
-          // Snap to grid
-          const snappedX = Math.round(item.x);
-          const snappedY = Math.round(item.y);
-          const snappedW = Math.round(item.w);
-          const snappedH = Math.round(item.h);
-          
-          // Check if changed
-          const hasChanged = 
-            existingBin.x_grid !== snappedX ||
-            existingBin.y_grid !== snappedY ||
-            existingBin.width_units !== snappedW ||
-            existingBin.depth_units !== snappedH;
+        const snappedX = Math.round(item.x);
+        const snappedY = Math.round(item.y);
+        const snappedW = Math.round(item.w);
+        const snappedH = Math.round(item.h);
 
-          if (hasChanged) {
-            // Check bounds and collision before saving
-            if (
-                snappedX < 0 ||
-                snappedY < 0 ||
-                snappedX + snappedW > currentDrawer.width_units ||
-                snappedY + snappedH > currentDrawer.depth_units ||
-                isPositionOccupied(snappedX, snappedY, snappedW, snappedH, item.i)
-            ) {
-                // If invalid, we don't save. Ideally we should revert the UI state too,
-                // but since finalBins below uses newLayout, the UI will update to the invalid state temporarily.
-                // However, RGL usually prevents dropping on occupied spots if preventCollision is true.
-                console.warn("Invalid position detected, skipping save");
-                return;
-            }
+        const placementCheck = validatePlacement3D(
+          snappedX,
+          snappedY,
+          snappedW,
+          snappedH,
+          Math.max(1, existingBin.height_units || 1),
+          item.i
+        );
 
-            console.log(`[AutoSave] Updating bin ${existingBin.bin_id} to (${snappedX},${snappedY})`);
-            apiClient.updateBin(existingBin.bin_id, {
-              x_grid: snappedX,
-              y_grid: snappedY,
-              width_units: snappedW,
-              depth_units: snappedH,
-            }).catch(err => {
-                console.error("Failed to auto-save bin position:", err);
-            });
-          }
+        if (!placementCheck.valid) {
+          sanitizedById.set(item.i, {
+            x: existingBin.x_grid,
+            y: existingBin.y_grid,
+            w: existingBin.width_units,
+            h: existingBin.depth_units,
+          });
+          return;
+        }
+
+        sanitizedById.set(item.i, { x: snappedX, y: snappedY, w: snappedW, h: snappedH });
+
+        const hasChanged =
+          existingBin.x_grid !== snappedX ||
+          existingBin.y_grid !== snappedY ||
+          existingBin.width_units !== snappedW ||
+          existingBin.depth_units !== snappedH;
+
+        if (hasChanged) {
+          apiClient.updateBin(existingBin.bin_id, {
+            x_grid: snappedX,
+            y_grid: snappedY,
+            width_units: snappedW,
+            depth_units: snappedH,
+          }).catch(err => {
+            console.error("Failed to auto-save bin position:", err);
+          });
+        }
       });
-      
+
       const finalBins = currentLayer.bins.map(bin => {
-           const layoutItem = newLayout.find(l => l.i === bin.bin_id);
-           if (layoutItem) {
-               return {
-                   ...bin,
-                   x_grid: Math.round(layoutItem.x),
-                   y_grid: Math.round(layoutItem.y),
-                   width_units: Math.round(layoutItem.w),
-                   depth_units: Math.round(layoutItem.h)
-               };
-           }
-           return bin;
+        const sanitized = sanitizedById.get(bin.bin_id);
+        if (!sanitized) return bin;
+
+        return {
+          ...bin,
+          x_grid: sanitized.x,
+          y_grid: sanitized.y,
+          width_units: sanitized.w,
+          depth_units: sanitized.h
+        };
       });
 
       const updatedLayers = currentDrawer.layers.map((layer, idx) =>
@@ -577,7 +687,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     // ... search logic ...
     for (let j = 0; j < currentDrawer.depth_units; j++) {
       for (let i = 0; i < currentDrawer.width_units; i++) {
-        if (!isPositionOccupied(i, j, 1, 1)) {
+        const placementCheck = validatePlacement3D(i, j, 1, 1, 1);
+        if (placementCheck.valid) {
           x = i;
           y = j;
           foundPosition = true;
@@ -605,6 +716,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         title: 'Nouvelle boîte',
         description: '',
         icon: getRandomIcon(),
+        can_place_on_top: true,
         items: [],
         photos: [],
       },
