@@ -1174,17 +1174,17 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Floating Stats - Bottom Right */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 max-[430px]:gap-1.5">
         <button
           onClick={handleRecenter}
-          className="bg-[var(--color-bg-secondary)]/80 backdrop-blur-md p-2 rounded-lg shadow-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all"
+          className="h-11 w-11 max-[430px]:h-10 max-[430px]:w-10 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl shadow-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all flex items-center justify-center"
           title="Recentrer la vue"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
         </button>
-        <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md px-3 py-2 rounded-lg shadow-lg border border-[var(--color-border)]">
+        <div className="h-11 max-[430px]:h-10 flex items-center gap-4 max-[430px]:gap-3 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md px-3.5 max-[430px]:px-3 rounded-xl shadow-lg border border-[var(--color-border)]">
             <span className="font-medium">{currentLayer.bins.length} boîte{currentLayer.bins.length > 1 ? 's' : ''}</span>
             <span>Zoom: {Math.round(scale * 100)}%</span>
         </div>

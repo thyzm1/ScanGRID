@@ -105,7 +105,7 @@ const LayerSelector = () => {
 
   return (
     <div className="w-full min-[1024px]:w-auto">
-      <div className="hidden min-[1024px]:flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
+      <div className="hidden min-[1024px]:flex items-center gap-2 p-1.5 bg-[var(--color-bg-secondary)]/80 backdrop-blur-md rounded-xl border border-[var(--color-border)] shadow-lg pointer-events-auto w-full sm:w-auto">
         {/* Layer Tabs Container */}
         <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-full px-1">
           <AnimatePresence mode='popLayout'>
@@ -120,7 +120,7 @@ const LayerSelector = () => {
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={() => setCurrentLayerIndex(idx)}
                 className={`
-                  h-9 relative px-2.5 sm:px-3 rounded-md text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2
+                  h-9 relative px-3 rounded-md text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2
                   ${
                     isActive
                       ? 'bg-indigo-500 text-white shadow-sm'
@@ -148,7 +148,7 @@ const LayerSelector = () => {
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 shrink-0"></div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 bg-[var(--color-bg)] rounded-lg p-1 border border-[var(--color-border)] shrink-0 h-11">
+        <div className="flex items-center gap-1 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] shrink-0 h-9">
             <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
