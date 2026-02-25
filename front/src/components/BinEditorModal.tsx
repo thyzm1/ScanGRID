@@ -36,6 +36,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
   const autoSaveTimerRef = useRef<number | null>(null);
   const isHydratingRef = useRef(true);
   const lastSavedSignatureRef = useRef('');
+  const photoFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Ensure categories are refreshed whenever the bin editor opens.
   useEffect(() => {
@@ -213,6 +214,36 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
     }
   };
 
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('read_error'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleUploadPhotoFiles = async (e: any) => {
+    const files = Array.from((e.target?.files || []) as File[]);
+    if (files.length === 0) return;
+
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      alert('Aucun fichier image valide sélectionné.');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const encoded = await Promise.all(imageFiles.map(readFileAsDataUrl));
+      setPhotos((prev) => [...prev, ...encoded.filter(Boolean)]);
+    } catch (error) {
+      console.error('Erreur upload photo locale:', error);
+      alert("Impossible d'importer une ou plusieurs images.");
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   const handleRemovePhoto = (index: number) => {
     setPhotos(photos.filter((_, i) => i !== index));
   };
@@ -337,7 +368,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
               </label>
               <input
                 type="text"
-                className="input w-full text-lg"
+                className="input h-11 w-full text-base"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="ESP32 Dev Boards"
@@ -347,7 +378,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             <div>
               <label className="block text-sm font-semibold mb-2">Catégorie</label>
               <select
-                className="input w-full"
+                className="input h-11 w-full"
                 value={categoryId || ''}
                 onChange={(e) => setCategoryId(e.target.value || null)}
                 disabled={isLoadingCategories}
@@ -556,7 +587,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2">Rotation 90° en réorganisation</label>
+            <label className="block text-sm font-semibold mb-2">Rotation Autorisé</label>
             <button
               type="button"
               onClick={() => setCanRotate((prev) => !prev)}
@@ -616,7 +647,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
           {/* Photos - Sixth */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Photos (URLs)</label>
+            <label className="block text-sm font-semibold mb-2">Photos (URL ou fichier local)</label>
             <div className="space-y-3">
               {photos.map((photo, index) => (
                 <motion.div
@@ -658,13 +689,31 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                   placeholder="https://example.com/photo.jpg"
                 />
                 <button
+                  type="button"
                   onClick={handleAddPhoto}
                   className="btn-primary px-4 rounded-xl"
+                  title="Ajouter via URL"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => photoFileInputRef.current?.click()}
+                  className="h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+                  title="Importer depuis l'ordinateur"
+                >
+                  Importer
+                </button>
+                <input
+                  ref={photoFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleUploadPhotoFiles}
+                />
               </div>
             </div>
           </div>
