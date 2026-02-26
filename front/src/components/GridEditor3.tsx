@@ -31,6 +31,12 @@ interface GridEditor3Props {
   onBinDoubleClick: (bin: Bin) => void;
 }
 
+interface VisiblePlacedBin {
+  bin: Bin;
+  layerIndex: number;
+  isFromCurrentLayer: boolean;
+}
+
 const BASE_CELL_SIZE = 80; // 80px par unité Gridfinity (strict!)
 const GRID_OUTER_MARGIN_PX = 4;
 const PAN_CLICK_SUPPRESS_MS = 180;
@@ -381,39 +387,58 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
   const currentLayer = currentDrawer.layers[currentLayerIndex];
   if (!currentLayer) return null;
-  
-  const visibleBins = currentLayer.bins.filter(b => {
-      // Category Filter
-      if (selectedCategoryId && b.category_id !== selectedCategoryId) return false;
-      
-      // Text Filter
-      if (filterText) {
-          const lower = filterText.toLowerCase();
-          const matchLabel = b.content.title?.toLowerCase().includes(lower);
-          const matchDesc = b.content.description?.toLowerCase().includes(lower);
-          const matchContent = b.content.items?.some(item => {
-             const val = typeof item === 'string' ? item : (item as any).name || '';
-             return val.toLowerCase().includes(lower);
-          });
-          
-          if (!matchLabel && !matchDesc && !matchContent) return false;
-      }
-      return true;
-  });
-  
-  const placedBins = visibleBins.filter(b => b.x_grid >= 0 && b.y_grid >= 0);
+
+  const normalizedFilter = filterText.trim().toLowerCase();
+
+  const doesBinMatchFilters = (bin: Bin) => {
+    if (selectedCategoryId && bin.category_id !== selectedCategoryId) return false;
+
+    if (!normalizedFilter) return true;
+
+    const matchLabel = bin.content.title?.toLowerCase().includes(normalizedFilter);
+    const matchDesc = bin.content.description?.toLowerCase().includes(normalizedFilter);
+    const matchContent = bin.content.items?.some((item) => {
+      const value = typeof item === 'string' ? item : (item as any).name || '';
+      return value.toLowerCase().includes(normalizedFilter);
+    });
+
+    return Boolean(matchLabel || matchDesc || matchContent);
+  };
+
+  // Show bins on every occupied layer: a bin with height_units=2 started on layer N
+  // is visible on N and N+1.
+  const visibleBinsOnCurrentLayer: VisiblePlacedBin[] = currentDrawer.layers.flatMap((layer, layerIdx) =>
+    layer.bins
+      .filter((bin) => {
+        if (!doesBinMatchFilters(bin)) return false;
+        const binHeight = Math.max(1, bin.height_units || 1);
+        return currentLayerIndex >= layerIdx && currentLayerIndex <= layerIdx + binHeight - 1;
+      })
+      .map((bin) => ({
+        bin,
+        layerIndex: layerIdx,
+        isFromCurrentLayer: layerIdx === currentLayerIndex,
+      }))
+  );
+
+  const placedBins: VisiblePlacedBin[] = visibleBinsOnCurrentLayer.filter(
+    ({ bin }) => bin.x_grid >= 0 && bin.y_grid >= 0
+  );
+  const placedBinsById = new Map(placedBins.map((entry) => [entry.bin.bin_id, entry]));
   const placedBinsAllLayers = currentDrawer.layers.flatMap((layer, layerIdx) =>
     layer.bins
       .filter((b) => b.x_grid >= 0 && b.y_grid >= 0)
       .map((bin) => ({ bin, layerIndex: layerIdx }))
   );
-  const unplacedBins = visibleBins.filter(b => b.x_grid < 0 || b.y_grid < 0);
+  const unplacedBins = currentLayer.bins.filter(
+    (bin) => doesBinMatchFilters(bin) && (bin.x_grid < 0 || bin.y_grid < 0)
+  );
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
   const GRID_HEIGHT = currentDrawer.depth_units * BASE_CELL_SIZE;
 
   // Convert bins to react-grid-layout format
-  const layout: Layout[] = placedBins.map((bin) => ({
+  const layout: Layout[] = placedBins.map(({ bin, isFromCurrentLayer }) => ({
     i: bin.bin_id,
     x: bin.x_grid,
     y: bin.y_grid,
@@ -423,7 +448,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     minH: 1,
     maxW: currentDrawer.width_units,
     maxH: currentDrawer.depth_units,
-    static: editMode === 'view', // Static in view mode
+    // Bins coming from lower layers remain visible but cannot be moved from this layer.
+    static: editMode === 'view' || !isFromCurrentLayer,
   }));
 
   const overlaps2D = (
@@ -875,8 +901,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         // Update primary selection to the most recent one (or null)
         if (newIds.length > 0) {
             const lastId = newIds[newIds.length - 1];
-            const lastBin = currentLayer.bins.find(b => b.bin_id === lastId);
-            setSelectedBin(lastBin || null);
+            const lastBin = placedBinsById.get(lastId)?.bin || null;
+            setSelectedBin(lastBin);
         } else {
             setSelectedBin(null);
         }
@@ -890,7 +916,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   };
 
   // Render bin card
-  const renderBin = (bin: Bin) => {
+  const renderBin = (
+    bin: Bin,
+    options?: { isFromCurrentLayer?: boolean; sourceLayerIndex?: number }
+  ) => {
+    const isFromCurrentLayer = options?.isFromCurrentLayer ?? true;
+    const sourceLayerIndex = options?.sourceLayerIndex ?? currentLayerIndex;
     // Check if bin is selected either as primary or in multi-select list
     const isSelected = selectedBin?.bin_id === bin.bin_id || selectedBinIds.includes(bin.bin_id);
     const isSearched = searchedBinId === bin.bin_id;
@@ -915,7 +946,13 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         className={`
           relative h-full rounded-2xl overflow-hidden transition-all duration-300
           ${isSelected || isSearched ? 'ring-4 ring-blue-500 ring-opacity-70 shadow-2xl z-10' : 'shadow-lg'}
-          ${editMode === 'view' && !isEditing ? 'cursor-pointer' : editMode === 'edit' ? 'cursor-move' : 'cursor-default'}
+          ${
+            editMode === 'view' && !isEditing
+              ? 'cursor-pointer'
+              : editMode === 'edit' && isFromCurrentLayer
+                ? 'cursor-move'
+                : 'cursor-pointer'
+          }
           ${isDimmed ? 'opacity-20 grayscale-[50%]' : 'opacity-100'}
           ${isEditing ? 'pointer-events-none' : ''}
           border border-white/10
@@ -930,6 +967,11 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             p-2 sm:p-3 h-full flex flex-col text-white overflow-hidden relative
             
         `} style={{ backgroundColor: bin.color || '#3b82f6' }}>
+            {!isFromCurrentLayer && (
+              <div className="absolute top-1 left-1 z-20 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-black/30 text-white/90">
+                Couche {sourceLayerIndex + 1}
+              </div>
+            )}
             {/* Icon - visible as a watermark/background element or alongside title */}
             {bin.content.icon && !is1x1 && (
                <div className={`absolute top-1 right-1 opacity-20 pointer-events-none text-4xl`}>
@@ -965,7 +1007,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         */}
         
         {/* Edit Controls */}
-        {editMode === 'edit' && (
+        {editMode === 'edit' && isFromCurrentLayer && (
           <>
             {/* Delete - Top Right */}
             <div className="absolute top-0 right-0 p-1 z-50">
@@ -1185,7 +1227,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           </svg>
         </button>
         <div className="h-11 max-[430px]:h-10 flex items-center gap-4 max-[430px]:gap-3 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md px-3.5 max-[430px]:px-3 rounded-xl shadow-lg border border-[var(--color-border)]">
-            <span className="font-medium">{currentLayer.bins.length} boîte{currentLayer.bins.length > 1 ? 's' : ''}</span>
+            <span className="font-medium">{placedBins.length} boîte{placedBins.length > 1 ? 's' : ''}</span>
             <span>Zoom: {Math.round(scale * 100)}%</span>
         </div>
       </div>
@@ -1218,7 +1260,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                         <p className="text-sm text-gray-400 mt-2">Basculez en mode Grille pour ajouter des éléments.</p>
                     </div>
                  ) : (
-                    placedBins.map((bin) => (
+                    placedBins.map(({ bin, isFromCurrentLayer, layerIndex }) => (
                       <div 
                         key={bin.bin_id}
                         className={`
@@ -1246,9 +1288,16 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                                   {bin.content?.title || 'Sans titre'}
                                 </h3>
-                                <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                                  {bin.width_units}x{bin.depth_units} • ({bin.x_grid}, {bin.y_grid})
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  {!isFromCurrentLayer && (
+                                    <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                      Source C{layerIndex + 1}
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                    {bin.width_units}x{bin.depth_units} • ({bin.x_grid}, {bin.y_grid})
+                                  </span>
+                                </div>
                              </div>
                              
                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
@@ -1271,30 +1320,32 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                           </div>
                           
                           {/* Actions */}
-                          <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm('Supprimer cette boîte ?')) {
-                                    handleDeleteBin(bin.bin_id);
-                                  }
-                                }}
-                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="Supprimer"
-                             >
-                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                             </button>
-                             <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedBin(bin);
-                                }}
-                                className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                title="Modifier"
-                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                             </button>
-                          </div>
+                          {isFromCurrentLayer && (
+                            <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('Supprimer cette boîte ?')) {
+                                      handleDeleteBin(bin.bin_id);
+                                    }
+                                  }}
+                                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  title="Supprimer"
+                               >
+                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                               </button>
+                               <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBin(bin);
+                                  }}
+                                  className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                  title="Modifier"
+                               >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                               </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
@@ -1421,7 +1472,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   maxHeight: GRID_HEIGHT
                 }}
               >
-                {placedBins.map((bin) => (
+                {placedBins.map(({ bin, isFromCurrentLayer, layerIndex }) => (
                   <div
                     key={bin.bin_id}
                     className={
@@ -1432,7 +1483,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                         : ''
                     }
                   >
-                    {renderBin(bin)}
+                    {renderBin(bin, {
+                      isFromCurrentLayer,
+                      sourceLayerIndex: layerIndex,
+                    })}
                   </div>
                 ))}
               </GridLayout>
