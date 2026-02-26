@@ -1246,10 +1246,12 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         }}
       >
         {viewFormat === 'list' ? (
-           <div className="w-full h-full overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
+           <div className="w-full h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 px-4 pb-4 pt-28 md:px-8 md:pb-8 md:pt-32">
              <div className="max-w-5xl mx-auto">
                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 sm:mb-6">
-                 <h2 className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Liste des Boîtes - {currentLayer.layer_id}</h2>
+                 <h2 className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
+                   Liste des boîtes - {currentDrawer.name} (Couche {currentLayerIndex + 1})
+                 </h2>
                  <span className="text-sm text-gray-500">{placedBins.length} éléments</span>
                </div>
                
