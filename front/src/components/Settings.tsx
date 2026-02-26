@@ -101,9 +101,10 @@ const hasValidPhoto = (value: string) => value.trim().length > 0;
 
 const getMissingFields = (bin: Bin): MissingField[] => {
   const missing: MissingField[] = [];
-  const description = bin.content.description?.trim() || '';
-  const icon = bin.content.icon?.trim() || '';
-  const photos = bin.content.photos || [];
+  const content = (bin.content || {}) as Bin['content'];
+  const description = content.description?.trim() || '';
+  const icon = content.icon?.trim() || '';
+  const photos = Array.isArray(content.photos) ? content.photos : [];
   const hasPhoto = photos.some((photo) => hasValidPhoto(photo));
 
   if (!bin.category_id) missing.push('category');
@@ -282,16 +283,51 @@ export const Settings: React.FC = () => {
     );
   }, [incompleteEntries, missingFilters]);
 
+  const resolveEntryFromStoreByBinId = useCallback((binId: string): BinEntry | null => {
+    const latestDrawers = useStore.getState().drawers;
+
+    for (const drawer of latestDrawers) {
+      for (let layerIndex = 0; layerIndex < drawer.layers.length; layerIndex += 1) {
+        const layer = drawer.layers[layerIndex];
+        const bin = layer.bins.find((candidate) => candidate.bin_id === binId);
+        if (!bin) continue;
+
+        return {
+          drawer,
+          drawerId: drawer.drawer_id,
+          drawerName: drawer.name,
+          layerIndex,
+          layerId: layer.layer_id,
+          bin,
+          missing: getMissingFields(bin),
+        };
+      }
+    }
+
+    return null;
+  }, []);
+
   const openEntryForEdit = useCallback(
-    (entry: BinEntry) => {
-      setCurrentDrawer(entry.drawer);
-      setCurrentLayerIndex(entry.layerIndex);
+    (entry: BinEntry): boolean => {
+      const latestEntry = resolveEntryFromStoreByBinId(entry.bin.bin_id) || entry;
+      const maxLayerIndex = latestEntry.drawer.layers.length - 1;
+      if (maxLayerIndex < 0) return false;
+
+      const safeLayerIndex = Math.min(Math.max(0, latestEntry.layerIndex), maxLayerIndex);
+      const safeLayerId =
+        latestEntry.layerId || latestEntry.drawer.layers[safeLayerIndex]?.layer_id || latestEntry.bin.layer_id;
+
+      if (!safeLayerId) return false;
+
+      setCurrentDrawer(latestEntry.drawer);
+      setCurrentLayerIndex(safeLayerIndex);
       setSelectedBin({
-        ...entry.bin,
-        layer_id: entry.layerId,
+        ...latestEntry.bin,
+        layer_id: safeLayerId,
       });
+      return true;
     },
-    [setCurrentDrawer, setCurrentLayerIndex, setSelectedBin]
+    [resolveEntryFromStoreByBinId, setCurrentDrawer, setCurrentLayerIndex, setSelectedBin]
   );
 
   const stopGuidedSession = useCallback(
@@ -328,14 +364,13 @@ export const Settings: React.FC = () => {
       const binId = guidedQueue[targetIndex];
       if (!binId) return false;
 
-      const entry = allEntriesById.get(binId);
+      const entry = resolveEntryFromStoreByBinId(binId) || allEntriesById.get(binId);
       if (!entry) return false;
 
       setGuidedIndex(targetIndex);
-      openEntryForEdit(entry);
-      return true;
+      return openEntryForEdit(entry);
     },
-    [guidedQueue, allEntriesById, openEntryForEdit]
+    [guidedQueue, allEntriesById, openEntryForEdit, resolveEntryFromStoreByBinId]
   );
 
   const toggleMissingFilter = (field: MissingField) => {
@@ -424,9 +459,11 @@ export const Settings: React.FC = () => {
     setIsGuidedMode(true);
     setGuidedMessage(null);
 
-    const firstEntry = allEntriesById.get(queue[0]);
+    const firstEntry = resolveEntryFromStoreByBinId(queue[0]) || allEntriesById.get(queue[0]);
     if (firstEntry) {
-      openEntryForEdit(firstEntry);
+      if (!openEntryForEdit(firstEntry)) {
+        stopGuidedSession("Impossible d'ouvrir la première bin de la session.", true);
+      }
     }
   };
 
@@ -873,7 +910,7 @@ export const Settings: React.FC = () => {
                           Bin {Math.min(guidedIndex + 1, guidedQueue.length)} / {guidedQueue.length}
                           {' • '}
                           restantes: {guidedRemaining}
-                          {guidedCurrentEntry ? ` • ${guidedCurrentEntry.bin.content.title || 'Sans titre'}` : ''}
+                          {guidedCurrentEntry ? ` • ${guidedCurrentEntry.bin.content?.title || 'Sans titre'}` : ''}
                         </>
                       ) : (
                         <>Résultats filtrés: {filteredIncompleteEntries.length}</>
@@ -908,7 +945,7 @@ export const Settings: React.FC = () => {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="font-semibold truncate">
-                                {entry.bin.content.title || 'Sans titre'}
+                                {entry.bin.content?.title || 'Sans titre'}
                               </div>
                               <div className="text-xs text-[var(--color-text-secondary)] mt-1">
                                 {entry.drawerName} • Couche {entry.layerIndex + 1} • ({entry.bin.x_grid},{' '}
