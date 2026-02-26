@@ -778,7 +778,7 @@ async def locate_box(
     matched_item = best_match.get("matched_item")
     all_items = best_match.get("items", [])
 
-    location_str = f"Tiroir « {d.name} », couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}"
+    location_str = f"« {d.name} », Couche {layer_num}, Position X: {b.x_grid + 1} Y: {b.y_grid + 1} !"
 
     if matched_item:
         spoken = (
