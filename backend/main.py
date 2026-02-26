@@ -633,20 +633,30 @@ Description :"""
 
 # ============= SIRI / HOME ASSISTANT LOCATE API =============
 
-def _score_bin(bin_obj: Bin, query: str, drawer_name: str, category_name: str | None) -> int:
+def _score_bin(
+    bin_obj: Bin,
+    query: str,
+    drawer_name: str,
+    category_name: str | None,
+    match_info: dict | None = None,
+) -> int:
     """
     Calcule un score de pertinence entre une boîte et la requête.
     Plus le score est élevé, plus la boîte est pertinente.
+    Si match_info est fourni, il sera rempli avec :
+      - matched_item : premier article de la liste items qui matche
     """
     q = query.lower().strip()
     score = 0
 
     title: str = ""
     description: str = ""
+    items: list = []
 
     if bin_obj.content and isinstance(bin_obj.content, dict):
         title = str(bin_obj.content.get("title", "")).lower()
         description = str(bin_obj.content.get("description", "")).lower()
+        items = bin_obj.content.get("items") or []
 
     # Correspondance exacte dans le titre → score très élevé
     if q == title:
@@ -666,6 +676,29 @@ def _score_bin(bin_obj: Bin, query: str, drawer_name: str, category_name: str | 
         for word in q.split():
             if len(word) >= 3 and word in description:
                 score += 10
+
+    # Articles contenus dans la boîte (items)
+    matched_item = None
+    for item in items:
+        item_lower = str(item).lower()
+        if q == item_lower:
+            score += 80          # correspondance exacte item
+            matched_item = item
+            break
+        elif q in item_lower:
+            score += 45
+            if matched_item is None:
+                matched_item = item
+        else:
+            for word in q.split():
+                if len(word) >= 3 and word in item_lower:
+                    score += 15
+                    if matched_item is None:
+                        matched_item = item
+
+    if match_info is not None:
+        match_info["matched_item"] = matched_item
+        match_info["items"] = [str(i) for i in items]
 
     # Catégorie
     if category_name and q in category_name.lower():
@@ -714,7 +747,8 @@ async def locate_box(
                 if bin_obj.is_hole:
                     continue
                 cat_name = bin_obj.category.name if bin_obj.category else None
-                score = _score_bin(bin_obj, query, drawer.name, cat_name)
+                info: dict = {}
+                score = _score_bin(bin_obj, query, drawer.name, cat_name, info)
                 if score > best_score:
                     best_score = score
                     best_match = {
@@ -722,6 +756,8 @@ async def locate_box(
                         "layer": layer,
                         "drawer": drawer,
                         "category": cat_name,
+                        "matched_item": info.get("matched_item"),
+                        "items": info.get("items", []),
                     }
 
     if best_match is None or best_score == 0:
@@ -739,13 +775,21 @@ async def locate_box(
     title = b.content.get("title", "Boîte inconnue") if b.content else "Boîte inconnue"
     description = b.content.get("description", "") if b.content else ""
     layer_num = l.z_index + 1  # 1-based pour l'humain
+    matched_item = best_match.get("matched_item")
+    all_items = best_match.get("items", [])
 
-    location_str = f"{d.name}, couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}"
+    location_str = f"Tiroir « {d.name} », couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}"
 
-    spoken = (
-        f"J'ai trouvé « {title} » dans {d.name}, "
-        f"couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}."
-    )
+    if matched_item:
+        spoken = (
+            f"J'ai trouvé l'article « {matched_item} » dans la boîte « {title} », "
+            f"tiroir {d.name}, couche {layer_num}, colonne {b.x_grid + 1}, rangée {b.y_grid + 1}."
+        )
+    else:
+        spoken = (
+            f"J'ai trouvé « {title} » dans le tiroir {d.name}, "
+            f"couche {layer_num}, colonne {b.x_grid + 1}, rangée {b.y_grid + 1}."
+        )
     if description:
         spoken += f" {description[:120]}"
 
@@ -771,6 +815,8 @@ async def locate_box(
             "depth": b.depth_units,
             "color": b.color,
             "location": location_str,
+            "matched_item": matched_item,
+            "items": all_items,
         },
     }
 
