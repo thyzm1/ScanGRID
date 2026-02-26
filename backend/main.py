@@ -631,6 +631,150 @@ Description :"""
         )
 
 
+# ============= SIRI / HOME ASSISTANT LOCATE API =============
+
+def _score_bin(bin_obj: Bin, query: str, drawer_name: str, category_name: str | None) -> int:
+    """
+    Calcule un score de pertinence entre une boîte et la requête.
+    Plus le score est élevé, plus la boîte est pertinente.
+    """
+    q = query.lower().strip()
+    score = 0
+
+    title: str = ""
+    description: str = ""
+
+    if bin_obj.content and isinstance(bin_obj.content, dict):
+        title = str(bin_obj.content.get("title", "")).lower()
+        description = str(bin_obj.content.get("description", "")).lower()
+
+    # Correspondance exacte dans le titre → score très élevé
+    if q == title:
+        score += 100
+    elif q in title:
+        score += 60
+    else:
+        # Chaque mot de la requête trouvé dans le titre
+        for word in q.split():
+            if len(word) >= 3 and word in title:
+                score += 20
+
+    # Description
+    if q in description:
+        score += 30
+    else:
+        for word in q.split():
+            if len(word) >= 3 and word in description:
+                score += 10
+
+    # Catégorie
+    if category_name and q in category_name.lower():
+        score += 15
+
+    # Nom du tiroir
+    if q in drawer_name.lower():
+        score += 5
+
+    return score
+
+
+@api_router.get(
+    "/locate",
+    tags=["Siri"],
+    summary="Localiser une boîte par son nom ou contenu"
+)
+async def locate_box(
+    query: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Recherche la boîte la plus probable correspondant à la requête.
+    Parcourt tous les tiroirs, couches et boîtes.
+    Retourne la localisation humaine + une phrase spoken pour Siri.
+    """
+    logger.info(f"🔍 /locate?query={query}")
+
+    if not query or len(query.strip()) < 2:
+        raise HTTPException(status_code=400, detail="La requête est trop courte (min 2 caractères).")
+
+    # Charger tous les tiroirs avec leurs couches et boîtes
+    result = await db.execute(
+        select(Drawer).options(
+            selectinload(Drawer.layers).selectinload(Layer.bins).selectinload(Bin.category)
+        )
+    )
+    drawers = result.scalars().all()
+
+    best_score = 0
+    best_match = None
+
+    for drawer in drawers:
+        for layer in sorted(drawer.layers, key=lambda l: l.z_index):
+            for bin_obj in layer.bins:
+                if bin_obj.is_hole:
+                    continue
+                cat_name = bin_obj.category.name if bin_obj.category else None
+                score = _score_bin(bin_obj, query, drawer.name, cat_name)
+                if score > best_score:
+                    best_score = score
+                    best_match = {
+                        "bin": bin_obj,
+                        "layer": layer,
+                        "drawer": drawer,
+                        "category": cat_name,
+                    }
+
+    if best_match is None or best_score == 0:
+        return {
+            "found": False,
+            "query": query,
+            "spoken": f"Je n'ai rien trouvé pour « {query} » dans l'inventaire.",
+            "result": None,
+        }
+
+    b = best_match["bin"]
+    d = best_match["drawer"]
+    l = best_match["layer"]
+
+    title = b.content.get("title", "Boîte inconnue") if b.content else "Boîte inconnue"
+    description = b.content.get("description", "") if b.content else ""
+    layer_num = l.z_index + 1  # 1-based pour l'humain
+
+    location_str = f"{d.name}, couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}"
+
+    spoken = (
+        f"J'ai trouvé « {title} » dans {d.name}, "
+        f"couche {layer_num}, position x{b.x_grid + 1} y{b.y_grid + 1}."
+    )
+    if description:
+        spoken += f" {description[:120]}"
+
+    logger.info(f"✅ Meilleur résultat (score {best_score}): {title} → {location_str}")
+
+    return {
+        "found": True,
+        "query": query,
+        "score": best_score,
+        "spoken": spoken,
+        "result": {
+            "box_id": b.id,
+            "title": title,
+            "description": description,
+            "category": best_match["category"],
+            "drawer": d.name,
+            "drawer_id": d.id,
+            "layer": layer_num,
+            "layer_id": l.id,
+            "x": b.x_grid + 1,
+            "y": b.y_grid + 1,
+            "width": b.width_units,
+            "depth": b.depth_units,
+            "color": b.color,
+            "location": location_str,
+        },
+    }
+
+
 # Monter le routeur API sous le préfixe /api
 app.include_router(api_router, prefix="/api")
 
