@@ -1279,7 +1279,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                             className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shadow-inner shrink-0"
                             style={{ backgroundColor: bin.color || '#e2e8f0' }}
                           >
-                            <span>{bin.content?.icon || '📦'}</span>
+                            <IconDisplay
+                              icon={bin.content?.icon || 'inventory_2'}
+                              className="text-[22px] leading-none text-white/95"
+                            />
                           </div>
                           
                           {/* Content */}
