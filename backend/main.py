@@ -595,7 +595,7 @@ async def improve_description(
     instruction: str = "Description pour un inventaire de composants électroniques"
 ):
     """
-    Utilise Ollama (llama3.2:1b) pour générer une description ultra-concise.
+    Utilise Ollama (llama3.2:3b) pour générer une description ultra-concise.
     """
     if not OLLAMA_AVAILABLE:
         raise HTTPException(
@@ -624,7 +624,7 @@ Description :"""
 
     try:
         response = ollama.generate(
-            model='llama3.2:1b',
+            model='llama3.2:3b',
             prompt=prompt,
             options={
                 'temperature': 0.2,    # Très bas pour rester factuel
@@ -639,7 +639,7 @@ Description :"""
         
         return {
             "improved_description": improved_description,
-            "model": "llama3.2:1b"
+            "model": "llama3.2:3b"
         }
         
     except Exception as e:
@@ -1137,7 +1137,7 @@ async def bom_extract_pdf(file: UploadFile = File(...)):
 
 class AIParseRequest(BaseModel):
     text: str
-    max_chars: int = 8000   # guard: llama3.2:1b context ~8k tokens
+    max_chars: int = 12000   # guard: llama3.2:3b context ~128k tokens
 
 class AIComponentEntry(BaseModel):
     designation: str
@@ -1151,7 +1151,7 @@ class AIParseResult(BaseModel):
     model: str
 
 _OLLAMA_URL = "http://localhost:11434/api/generate"
-_OLLAMA_MODEL = "llama3.2:1b"
+_OLLAMA_MODEL = "llama3.2:3b"
 
 _BOM_SYSTEM_PROMPT = """Tu es un parseur de nomenclature électronique (BOM). 
 RÈGLES STRICTES :
@@ -1170,7 +1170,7 @@ FORMAT OBLIGATOIRE :
 @api_router.post("/bom/ai-parse", response_model=AIParseResult)
 async def bom_ai_parse(req: AIParseRequest):
     """
-    Envoie le texte extrait d'un PDF à Ollama (llama3.2:1b) pour un filtrage
+    Envoie le texte extrait d'un PDF à Ollama (llama3.2:3b) pour un filtrage
     sémantique : suppression des lignes non-composants, dédoublonnage, 
     structuration en JSON propre.
     """

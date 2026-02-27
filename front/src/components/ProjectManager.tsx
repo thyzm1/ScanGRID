@@ -236,10 +236,13 @@ export default function ProjectManager() {
 
     // Modal state
     const [modal, setModal] = useState<SearchResult | null>(null);
+    // editBin: auto-open AddModal to edit after adding, or manually via pencil icon
+    const [editBin, setEditBin] = useState<{ item: SearchResult; existing: ProjectBinEntry } | null>(null);
 
     const debouncedQuery = useDebounce(searchQuery, 300);
 
     useEffect(() => { injectPrintStyles(); }, []);
+
 
     // ─── Load projects ───────────────────────────────────────────────────────
 
@@ -323,6 +326,11 @@ export default function ProjectManager() {
             setProjects((prev) => prev.map((p) =>
                 p.id === selectedProject.id ? { ...p, bin_count: p.bin_count + 1 } : p
             ));
+            // Auto-open edit modal immediately after adding so user can fill url/qty
+            const updatedBins = await apiClient.getProjectBins(selectedProject.id);
+            setProjectBins(updatedBins);
+            const justAdded = updatedBins.find((pb) => pb.bin_id === item.bin_id);
+            if (justAdded) setEditBin({ item, existing: justAdded });
         } catch { /* ignore */ }
     };
 
@@ -334,6 +342,16 @@ export default function ProjectManager() {
             setProjects((prev) => prev.map((p) =>
                 p.id === selectedProject.id ? { ...p, bin_count: Math.max(0, p.bin_count - 1) } : p
             ));
+        } catch { /* ignore */ }
+    };
+
+    const handleUpdateBin = async (pb: ProjectBinEntry, qty: number, note: string, url: string) => {
+        if (!selectedProject) return;
+        try {
+            await apiClient.addProjectBin(selectedProject.id, {
+                bin_id: pb.bin_id, qty, note: note || undefined, url: url || undefined,
+            });
+            await loadProjectBins(selectedProject.id);
         } catch { /* ignore */ }
     };
 
@@ -381,6 +399,15 @@ export default function ProjectManager() {
                     existing={getExisting(modal.bin_id) as ProjectBinEntry | undefined}
                     onConfirm={(qty, note, url) => handleConfirmAdd(modal, qty, note, url)}
                     onClose={() => setModal(null)}
+                />
+            )}
+            {/* Auto-edit modal: appears right after adding, to let user fill url/qty */}
+            {editBin && selectedProject && (
+                <AddModal
+                    item={editBin.item}
+                    existing={editBin.existing}
+                    onConfirm={(qty, note, url) => handleUpdateBin(editBin.existing, qty, note, url)}
+                    onClose={() => setEditBin(null)}
                 />
             )}
             {(showProjectForm || editingProject) && (
@@ -646,6 +673,31 @@ export default function ProjectManager() {
                                                         <span className="font-mono text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] px-1.5 py-0.5 rounded-lg">
                                                             ×{pb.qty}
                                                         </span>
+                                                        {/* Edit button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                // Build a SearchResult-like object to reuse AddModal
+                                                                const fakeResult: SearchResult = {
+                                                                    bin_id: pb.bin_id,
+                                                                    title: pb.title,
+                                                                    description: pb.description,
+                                                                    drawer: pb.drawer,
+                                                                    layer: pb.layer ?? 0,
+                                                                    x: pb.x ?? 0,
+                                                                    y: pb.y ?? 0,
+                                                                    color: pb.color,
+                                                                    items: [],
+                                                                    score: 1,
+                                                                };
+                                                                setEditBin({ item: fakeResult, existing: pb });
+                                                            }}
+                                                            className="p-1 rounded-lg text-[var(--color-text-secondary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                                            title="Modifier (quantité, note, lien)"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
                                                         <button onClick={() => handleRemoveBin(pb.pb_id)}
                                                             className="p-1 rounded-lg text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

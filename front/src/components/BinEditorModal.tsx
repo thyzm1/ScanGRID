@@ -272,23 +272,23 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
         description || itemsText,
         'Description pour un inventaire de composants électroniques'
       );
-      
+
       // Animation finale jusqu'à 100%
       clearInterval(progressInterval);
       setImprovementProgress(100);
-      
+
       // Attendre un peu pour montrer le 100% avant de masquer
       setTimeout(() => {
         setDescription(result.improved_description);
         setIsImproving(false);
         setImprovementProgress(0);
       }, 400);
-      
+
     } catch (error) {
       clearInterval(progressInterval);
       setImprovementProgress(0);
       console.error('Erreur lors de l\'amélioration:', error);
-      alert('Impossible d\'améliorer la description. Vérifiez qu\'Ollama est en cours d\'exécution avec le modèle llama3.2:1b');
+      alert('Impossible d\'améliorer la description. Vérifiez qu\'Ollama est en cours d\'exécution avec le modèle llama3.2:3b');
       setIsImproving(false);
     }
   };
@@ -428,7 +428,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 )}
               </button>
             </div>
-            
+
             {/* Barre de progression */}
             {isImproving && (
               <div className="mb-3">
@@ -441,7 +441,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                   </span>
                 </div>
                 <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ease-out"
                     style={{ width: `${improvementProgress}%` }}
                   >
@@ -450,7 +450,7 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 </div>
               </div>
             )}
-            
+
             <textarea
               className="input w-full min-h-20 resize-y"
               value={description}
@@ -554,11 +554,10 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             <button
               type="button"
               onClick={() => setCanPlaceOnTop((prev) => !prev)}
-              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
-                canPlaceOnTop
+              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${canPlaceOnTop
                   ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20'
                   : 'border-amber-300 bg-amber-50/80 dark:bg-amber-900/20'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -572,14 +571,12 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                   </div>
                 </div>
                 <div
-                  className={`w-11 h-6 rounded-full relative transition-colors ${
-                    canPlaceOnTop ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}
+                  className={`w-11 h-6 rounded-full relative transition-colors ${canPlaceOnTop ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                      canPlaceOnTop ? 'translate-x-5' : 'translate-x-0.5'
-                    }`}
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${canPlaceOnTop ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
                   />
                 </div>
               </div>
@@ -591,11 +588,10 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
             <button
               type="button"
               onClick={() => setCanRotate((prev) => !prev)}
-              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
-                canRotate
+              className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${canRotate
                   ? 'border-blue-300 bg-blue-50/80 dark:bg-blue-900/20'
                   : 'border-gray-300 bg-gray-50/80 dark:bg-gray-900/20'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -609,14 +605,12 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                   </div>
                 </div>
                 <div
-                  className={`w-11 h-6 rounded-full relative transition-colors ${
-                    canRotate ? 'bg-blue-500' : 'bg-gray-400'
-                  }`}
+                  className={`w-11 h-6 rounded-full relative transition-colors ${canRotate ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                      canRotate ? 'translate-x-5' : 'translate-x-0.5'
-                    }`}
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${canRotate ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
                   />
                 </div>
               </div>
@@ -629,20 +623,20 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
 
           {/* Layer Selection - Fifth (Moved down) */}
           {currentDrawer && (
-              <div>
-                  <label className="block text-sm font-semibold mb-2">Couche</label>
-                  <select
-                      className="input w-full"
-                      value={selectedLayerId || ''}
-                      onChange={(e) => setSelectedLayerId(e.target.value)}
-                  >
-                      {currentDrawer.layers.map((layer, idx) => (
-                          <option key={layer.layer_id} value={layer.layer_id}>
-                              Couche {idx + 1} (z-index: {layer.z_index})
-                          </option>
-                      ))}
-                  </select>
-              </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Couche</label>
+              <select
+                className="input w-full"
+                value={selectedLayerId || ''}
+                onChange={(e) => setSelectedLayerId(e.target.value)}
+              >
+                {currentDrawer.layers.map((layer, idx) => (
+                  <option key={layer.layer_id} value={layer.layer_id}>
+                    Couche {idx + 1} (z-index: {layer.z_index})
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           {/* Photos - Sixth */}

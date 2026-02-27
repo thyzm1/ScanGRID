@@ -62,19 +62,28 @@ export default function DrawerList() {
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-bg-secondary)]/50 backdrop-blur-sm">
         <h2 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-          <i className="ri-archive-drawer-line text-blue-500"></i>
+          <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
           Mes Tiroirs
         </h2>
         <button
           onClick={() => setIsCreating(!isCreating)}
-          className={`p-2 rounded-lg transition-colors shadow-sm ${
-            isCreating 
-              ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+          className={`p-1.5 rounded-lg transition-colors shadow-sm ${isCreating
+              ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
               : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
+            }`}
           title={isCreating ? "Annuler" : "Nouveau tiroir"}
         >
-          <i className={`ri-${isCreating ? 'close-line' : 'add-line'} text-xl`}></i>
+          {isCreating ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          )}
         </button>
       </div>
 
@@ -99,7 +108,7 @@ export default function DrawerList() {
                   autoFocus
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Largeur (U)</label>
@@ -134,7 +143,15 @@ export default function DrawerList() {
                 disabled={loading || !newDrawerName.trim()}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md transition-all flex items-center justify-center gap-2"
               >
-                {loading ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-check-line"></i>}
+                {loading ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
                 Créer le tiroir
               </button>
             </div>
@@ -162,42 +179,52 @@ export default function DrawerList() {
               animate={{ opacity: 1, y: 0 }}
               className={`
                 group relative p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 select-none
-                ${isActive 
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-500/20' 
+                ${isActive
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-500/20'
                   : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600'
                 }
               `}
             >
               <div className={`
                 p-2.5 rounded-lg flex-shrink-0 transition-colors
-                ${isActive 
-                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300' 
+                ${isActive
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300'
                   : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 group-hover:text-gray-600'
                 }
               `}>
-                <i className="ri-hard-drive-2-line text-xl"></i>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <h3 className={`font-semibold text-sm truncate ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-200'}`}>
                   {drawer.name}
                 </h3>
                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                   <span className="flex items-center gap-1" title="Dimensions">
-                    <i className="ri-ruler-2-line"></i> {drawer.width_units}x{drawer.depth_units}
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2m8-16h2a2 2 0 012 2v2m-4 12h2a2 2 0 002-2v-2" />
+                    </svg>
+                    {drawer.width_units}x{drawer.depth_units}
                   </span>
                   <span className="flex items-center gap-1" title="Couches">
-                    <i className="ri-stack-line"></i> {drawer.layers.length}
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4L2 9l10 5 10-5-10-5zM2 15l10 5 10-5M2 11l10 5 10-5" />
+                    </svg>
+                    {drawer.layers.length}
                   </span>
                 </div>
               </div>
 
               <button
                 onClick={(e) => handleDelete(drawer.drawer_id, e)}
-                className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                 title="Supprimer"
               >
-                <i className="ri-delete-bin-line text-lg"></i>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </motion.div>
           );

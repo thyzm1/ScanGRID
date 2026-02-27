@@ -70,13 +70,20 @@ else
 fi
 
 # Vérifier et télécharger le modèle si nécessaire
-if ! ollama list | grep -q "llama3.2:1b"; then
-    echo "📥 Téléchargement du modèle llama3.2:1b (~1.3 GB)..."
-    ollama pull llama3.2:1b
+if ! ollama list | grep -q "llama3.2:3b"; then
+    echo "📥 Téléchargement du modèle llama3.2:3b (~2 GB)..."
+    ollama pull llama3.2:3b
     echo "✅ Modèle téléchargé"
 else
-    echo "✅ Modèle llama3.2:1b déjà disponible"
+    echo "✅ Modèle llama3.2:3b déjà disponible"
 fi
+
+# Suppression de l'ancien modèle 1b si présent
+if ollama list | grep -q "llama3.2:1b"; then
+    echo "🗑️  Suppression de l'ancien modèle llama3.2:1b..."
+    ollama rm llama3.2:1b && echo "✅ llama3.2:1b supprimé" || echo "⚠️  Échec suppression 1b"
+fi
+
 # Vérification rapide de la syntaxe
 python3 -m py_compile main.py
 if [ $? -eq 0 ]; then

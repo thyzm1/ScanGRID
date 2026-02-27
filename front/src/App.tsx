@@ -35,8 +35,8 @@ function NavBtn({
       whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
       onClick={onClick} title={title}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${active
-          ? `${COLOR_MAP[color] ?? COLOR_MAP.blue} shadow-sm`
-          : 'border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
+        ? `${COLOR_MAP[color] ?? COLOR_MAP.blue} shadow-sm`
+        : 'border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
         }`}
     >
       <span className="text-sm leading-none">{icon}</span>
@@ -196,7 +196,7 @@ function App() {
           {/* BOM CENTER pill group */}
           <div className="flex items-center gap-0.5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl px-1 py-0.5">
             <span className="text-[9px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-[0.15em] px-1.5 hidden sm:block">BOM</span>
-            <NavBtn icon="🤖" label="Import IA" title="Import BOM via Ollama llama3.2:1b"
+            <NavBtn icon="🤖" label="Import IA" title="Import BOM via Ollama llama3.2:3b"
               active={viewMode === 'bom-import'} color="violet"
               onClick={() => setViewMode(viewMode === 'bom-import' ? '2D' : 'bom-import')} />
             <NavBtn icon="📋" label="Générateur" title="Générateur BOM + Export PDF"

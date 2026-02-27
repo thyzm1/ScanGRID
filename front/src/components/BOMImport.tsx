@@ -344,7 +344,7 @@ export default function BOMImport() {
                             <button
                                 onClick={handleAIAnalyze}
                                 disabled={!inputText.trim() || aiLoading}
-                                title="Filtrage intelligent par IA locale (Ollama llama3.2:1b)"
+                                title="Filtrage intelligent par IA locale (Ollama llama3.2:3b)"
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {aiLoading ? (
@@ -379,7 +379,7 @@ export default function BOMImport() {
                                 <div className="flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
                                     <span className="flex items-center gap-1.5">
                                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
-                                        Ollama (llama3.2:1b) analyse votre BOM…
+                                        Ollama (llama3.2:3b) analyse votre BOM…
                                     </span>
                                     <span className="text-violet-500 font-medium">~15–60s</span>
                                 </div>
