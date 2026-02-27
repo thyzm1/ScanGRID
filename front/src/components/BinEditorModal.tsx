@@ -10,9 +10,10 @@ interface BinEditorModalProps {
   bin: Bin | null;
   onClose: () => void;
   onSave: (updatedBin: Bin) => void;
+  onDelete?: (binId: string) => void;
 }
 
-export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalProps) {
+export default function BinEditorModal({ bin, onClose, onSave, onDelete }: BinEditorModalProps) {
   const { currentDrawer, currentLayerIndex, categories, setCategories } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -339,18 +340,34 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors flex items-center justify-center"
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {onDelete && bin && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Supprimer définitivement cette boîte ?')) {
+                    onDelete(bin.bin_id);
+                    onClose();
+                  }
+                }}
+                className="h-10 px-4 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center font-medium"
+                title="Supprimer la boîte"
+              >
+                Supprimer
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors flex items-center justify-center"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Content */}

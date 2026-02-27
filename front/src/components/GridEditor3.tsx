@@ -505,7 +505,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       return { valid: false, reason: 'Position hors limites du tiroir' };
     }
 
-    if (targetLayerEnd >= currentDrawer.layers.length) {
+    if (targetLayerEnd > currentDrawer.layers.length) {
       return { valid: false, reason: 'Hauteur impossible: dépasse le nombre de couches disponibles' };
     }
 
@@ -1421,7 +1421,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                         maxHeight: GRID_HEIGHT
                       }}
                     >
-                      {/* Background Grid Lines */}
+                      {/* Background Grid Lines & Support Visuals */}
                       <div className="absolute inset-0 pointer-events-none">
                         <svg width={GRID_WIDTH} height={GRID_HEIGHT} className="absolute inset-0">
                           <defs>
@@ -1434,6 +1434,33 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                               <rect width={BASE_CELL_SIZE} height={BASE_CELL_SIZE} fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-300 dark:text-gray-700" />
                             </pattern>
                           </defs>
+
+                          {/* Base Grid */}
+                          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+
+                          {/* Support Visuals (if > layer 0) */}
+                          {currentLayerIndex + subLayerOffset > 0 && Array.from({ length: currentDrawer.width_units }).map((_, i) =>
+                            Array.from({ length: currentDrawer.depth_units }).map((_, j) => {
+                              // Simulate a 1x1 0.5H placement check on this square
+                              const check = validatePlacement3D(i, j, 1, 1, 0.5, subLayerOffset, undefined);
+                              const isSupport = check.valid;
+
+                              if (!isSupport) return null;
+
+                              return (
+                                <rect
+                                  key={`${i}-${j}`}
+                                  x={i * BASE_CELL_SIZE}
+                                  y={j * BASE_CELL_SIZE}
+                                  width={BASE_CELL_SIZE}
+                                  height={BASE_CELL_SIZE}
+                                  fill="rgba(52, 211, 153, 0.15)" // Subtle emerald/green
+                                />
+                              );
+                            })
+                          )}
+
+                          {/* Re-draw grid lines on top for clarity */}
                           <rect width="100%" height="100%" fill="url(#grid-pattern)" />
                         </svg>
                       </div>

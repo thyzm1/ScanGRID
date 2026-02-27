@@ -136,6 +136,32 @@ function App() {
     }
   };
 
+  const handleDeleteBin = async (binId: string) => {
+    if (!currentDrawer) return;
+
+    // Optimistic Update
+    const updatedLayers = currentDrawer.layers.map((layer) =>
+      ({ ...layer, bins: layer.bins.filter((b) => b.bin_id !== binId) })
+    );
+
+    setCurrentDrawer({
+      ...currentDrawer,
+      layers: updatedLayers,
+    }, true);
+
+    if (selectedBin?.bin_id === binId) {
+      setSelectedBin(null);
+    }
+
+    try {
+      await apiClient.deleteBin(binId);
+    } catch (error) {
+      console.error("Failed to delete bin", error);
+      // Fallback reload
+      apiClient.getDrawer(currentDrawer.drawer_id).then(drawer => setCurrentDrawer(drawer));
+    }
+  };
+
   const isStock = viewMode === '2D' || viewMode === '3D';
 
   return (
@@ -329,6 +355,7 @@ function App() {
             bin={selectedBin}
             onClose={() => setSelectedBin(null)}
             onSave={handleSaveBin}
+            onDelete={handleDeleteBin}
           />
         )}
       </AnimatePresence>
