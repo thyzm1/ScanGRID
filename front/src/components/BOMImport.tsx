@@ -272,7 +272,7 @@ export default function BOMImport() {
                         {analyzed && results.length > 0 && (
                             <button
                                 onClick={handleExportPDF}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg shrink-0"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg shrink-0"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -331,7 +331,7 @@ export default function BOMImport() {
                             <button
                                 onClick={handleAnalyze}
                                 disabled={!inputText.trim() || loading}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:from-blue-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:from-blue-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
                                     <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyse en cours...</>
@@ -345,7 +345,7 @@ export default function BOMImport() {
                                 onClick={handleAIAnalyze}
                                 disabled={!inputText.trim() || aiImportStatus === 'running'}
                                 title="Filtrage intelligent par IA locale (Ollama llama3.2:3b)"
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {aiImportStatus === 'running' ? (
                                     <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />IA en cours (~30s)...</>
@@ -357,14 +357,14 @@ export default function BOMImport() {
                             {inputText ? (
                                 <button
                                     onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); resetAiImport(); }}
-                                    className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+                                    className="px-3 py-2 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
                                 >
                                     Effacer
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => setInputText(EXAMPLE_TEXT)}
-                                    className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+                                    className="px-3 py-2 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
                                 >
                                     Charger un exemple
                                 </button>
@@ -537,15 +537,15 @@ export default function BOMImport() {
                                     <tbody>
                                         {aiImportResult?.components.map((c, i) => (
                                             <tr key={i} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] transition-colors">
-                                                <td className="px-4 py-2.5 text-xs text-[var(--color-text-secondary)]">{i + 1}</td>
-                                                <td className="px-4 py-2.5 font-medium">{c.designation}</td>
-                                                <td className="px-4 py-2.5 font-mono text-xs text-blue-500">{c.reference || '—'}</td>
-                                                <td className="px-4 py-2.5 text-xs">
+                                                <td className="px-4 py-2 text-xs text-[var(--color-text-secondary)]">{i + 1}</td>
+                                                <td className="px-4 py-2 font-medium">{c.designation}</td>
+                                                <td className="px-4 py-2 font-mono text-xs text-blue-500">{c.reference || '—'}</td>
+                                                <td className="px-4 py-2 text-xs">
                                                     {c.package ? (
                                                         <span className="px-2 py-0.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)]">{c.package}</span>
                                                     ) : '—'}
                                                 </td>
-                                                <td className="px-4 py-2.5">
+                                                <td className="px-4 py-2">
                                                     <span className="font-mono text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] px-2 py-0.5 rounded-lg">×{c.qty}</span>
                                                 </td>
                                             </tr>

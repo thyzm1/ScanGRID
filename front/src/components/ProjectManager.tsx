@@ -448,7 +448,7 @@ export default function ProjectManager() {
                                 </>
                             )}
                             <button onClick={() => setShowProjectForm(true)}
-                                className="flex items-center gap-1.5 text-xs px-3 py-2.5 rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-colors font-medium">
+                                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-colors font-medium">
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
@@ -508,7 +508,7 @@ export default function ProjectManager() {
                         </svg>
                         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Rechercher un composant à associer au projet..."
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm focus:outline-none focus:border-teal-500 transition-colors"
+                            className="w-full pl-10 pr-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm focus:outline-none focus:border-teal-500 transition-colors"
                         />
                         {searchLoading && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -518,7 +518,7 @@ export default function ProjectManager() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col-reverse lg:grid lg:grid-cols-3 gap-4">
                     {/* Search results */}
                     <div className="lg:col-span-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm overflow-hidden">
                         <div className="p-4 border-b border-[var(--color-border)]">
