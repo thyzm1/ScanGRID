@@ -1191,7 +1191,7 @@ async def bom_ai_parse(req: AIParseRequest):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(_OLLAMA_URL, json=payload)
             resp.raise_for_status()
     except httpx.ConnectError:
@@ -1200,7 +1200,7 @@ async def bom_ai_parse(req: AIParseRequest):
             detail="Ollama introuvable sur localhost:11434. Vérifiez que le service tourne (ollama serve)."
         )
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Ollama n'a pas répondu dans les 90s.")
+        raise HTTPException(status_code=504, detail="Ollama n'a pas répondu dans les 300s.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur Ollama : {e}")
 
