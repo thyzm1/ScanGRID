@@ -17,14 +17,14 @@ class ApiClient {
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
-  
+
   private async request<T>(
     endpoint: string,
     options?: RequestInit
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     // console.log(`📡 API Request: ${options?.method || 'GET'} ${url}`); 
-    
+
     // ...existing request method...
     const response = await fetch(url, {
       ...options,
@@ -150,6 +150,23 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // ========================================================================
+  // BOM GENERATOR & IMPORT
+  // ========================================================================
+
+  async searchBOM(q: string): Promise<any[]> {
+    const params = new URLSearchParams({ q });
+    return this.request(`/bom/search?${params.toString()}`);
+  }
+
+  async matchBOM(lines: string[]): Promise<{ results: any[] }> {
+    return this.request('/bom/match', {
+      method: 'POST',
+      body: JSON.stringify({ lines }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
+

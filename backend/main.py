@@ -12,10 +12,11 @@ from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from pydantic import BaseModel
 from database import get_db, init_db
 from models import Drawer, Layer, Bin, Category
 from schemas import (
@@ -819,6 +820,246 @@ async def locate_box(
             "items": all_items,
         },
     }
+
+
+# ============= BOM — GENERATOR & IMPORT =============
+
+def _bom_score_bin(bin_obj: Bin, tokens: list[str]) -> tuple[int, str]:
+    """
+    Calcule un score de pertinence entre une boîte et une liste de tokens.
+    Retourne (score, raison_textuelle).
+    """
+    score = 0
+    reasons: list[str] = []
+
+    title = ""
+    description = ""
+    items: list = []
+
+    if bin_obj.content and isinstance(bin_obj.content, dict):
+        title = str(bin_obj.content.get("title", "")).lower()
+        description = str(bin_obj.content.get("description", "")).lower()
+        items = bin_obj.content.get("items") or []
+
+    items_str = " ".join(str(i).lower() for i in items)
+    full_text = f"{title} {description} {items_str}"
+
+    for tok in tokens:
+        if len(tok) < 2:
+            continue
+        if tok in title:
+            if tok == title:
+                score += 100
+                reasons.append(f"titre exact '{tok}'")
+            else:
+                score += 40
+                reasons.append(f"titre contient '{tok}'")
+        elif tok in description:
+            score += 20
+            reasons.append(f"desc. contient '{tok}'")
+        elif tok in items_str:
+            score += 30
+            reasons.append(f"item contient '{tok}'")
+        elif tok in full_text:
+            score += 10
+
+    return score, ", ".join(reasons) if reasons else "correspondance partielle"
+
+
+@api_router.get(
+    "/bom/search",
+    tags=["BOM"],
+    summary="Rechercher des composants pour le BOM Generator"
+)
+async def bom_search(
+    q: str = "",
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Recherche plein-texte dans tous les bins de l'inventaire.
+    Retourne les résultats triés par score de pertinence.
+    """
+    logger.info(f"🔍 GET /bom/search?q={q}")
+
+    if not q or len(q.strip()) < 1:
+        # Retourner tous les composants si pas de recherche
+        result = await db.execute(
+            select(Drawer).options(
+                selectinload(Drawer.layers).selectinload(Layer.bins).selectinload(Bin.category)
+            )
+        )
+        drawers = result.scalars().all()
+        tokens = []
+    else:
+        result = await db.execute(
+            select(Drawer).options(
+                selectinload(Drawer.layers).selectinload(Layer.bins).selectinload(Bin.category)
+            )
+        )
+        drawers = result.scalars().all()
+        tokens = [t.lower() for t in q.strip().split()]
+
+    results = []
+    for drawer in drawers:
+        for layer in sorted(drawer.layers, key=lambda l: l.z_index):
+            for bin_obj in layer.bins:
+                if bin_obj.is_hole:
+                    continue
+
+                title = ""
+                description = ""
+                bin_items: list = []
+
+                if bin_obj.content and isinstance(bin_obj.content, dict):
+                    title = bin_obj.content.get("title", "")
+                    description = bin_obj.content.get("description", "")
+                    bin_items = bin_obj.content.get("items") or []
+
+                if tokens:
+                    score, reason = _bom_score_bin(bin_obj, tokens)
+                    if score == 0:
+                        continue
+                else:
+                    score = 1
+                    reason = ""
+
+                cat_name = bin_obj.category.name if bin_obj.category else None
+
+                results.append({
+                    "bin_id": bin_obj.id,
+                    "title": title,
+                    "description": description,
+                    "ref": bin_items[0] if bin_items else title,
+                    "category": cat_name,
+                    "drawer": drawer.name,
+                    "drawer_id": drawer.id,
+                    "layer": layer.z_index + 1,
+                    "x": bin_obj.x_grid + 1,
+                    "y": bin_obj.y_grid + 1,
+                    "color": bin_obj.color,
+                    "items": [str(i) for i in bin_items],
+                    "score": score,
+                    "reason": reason,
+                })
+
+    results.sort(key=lambda r: r["score"], reverse=True)
+    logger.info(f"✅ BOM search '{q}' → {len(results)} résultat(s)")
+    return results[:50]  # Max 50 résultats
+
+
+class BOMMatchRequest(BaseModel):
+    """Corps de la requête POST /bom/match"""
+    lines: list[str]
+
+
+@api_router.post(
+    "/bom/match",
+    tags=["BOM"],
+    summary="Matcher des lignes de BOM importées contre le catalogue"
+)
+async def bom_match(
+    body: BOMMatchRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Pour chaque ligne de texte fournie, trouve le bin le plus proche.
+    Algorithme : tokenisation → score par token sur titre/items/description.
+    Score de confiance normalisé sur 1.0.
+    Seuil minimum : 0.60 pour ne pas retourner un faux positif.
+    """
+    logger.info(f"🔍 POST /bom/match — {len(body.lines)} ligne(s)")
+
+    # Charger tout l'inventaire une seule fois
+    result = await db.execute(
+        select(Drawer).options(
+            selectinload(Drawer.layers).selectinload(Layer.bins).selectinload(Bin.category)
+        )
+    )
+    drawers = result.scalars().all()
+
+    # Pré-indexer les bins pour éviter de les parcourir N fois
+    all_bins = []
+    for drawer in drawers:
+        for layer in sorted(drawer.layers, key=lambda l: l.z_index):
+            for bin_obj in layer.bins:
+                if bin_obj.is_hole:
+                    continue
+                title = ""
+                bin_items: list = []
+                description = ""
+                if bin_obj.content and isinstance(bin_obj.content, dict):
+                    title = bin_obj.content.get("title", "")
+                    description = bin_obj.content.get("description", "")
+                    bin_items = bin_obj.content.get("items") or []
+                cat_name = bin_obj.category.name if bin_obj.category else None
+                all_bins.append({
+                    "bin_obj": bin_obj,
+                    "title": title,
+                    "description": description,
+                    "items": [str(i) for i in bin_items],
+                    "category": cat_name,
+                    "drawer": drawer.name,
+                    "layer": layer.z_index + 1,
+                    "x": bin_obj.x_grid + 1,
+                    "y": bin_obj.y_grid + 1,
+                    "color": bin_obj.color,
+                })
+
+    # Score max théorique pour normalisation (100 * nb tokens)
+    CONFIDENCE_THRESHOLD = 0.60
+
+    match_results = []
+
+    for line in body.lines:
+        if not line or not line.strip():
+            continue
+
+        tokens = [t.lower() for t in line.strip().split() if len(t) >= 2]
+        if not tokens:
+            continue
+
+        best_score = 0
+        best_bin_data = None
+        best_reason = ""
+
+        for bin_data in all_bins:
+            bin_obj = bin_data["bin_obj"]
+            score, reason = _bom_score_bin(bin_obj, tokens)
+            if score > best_score:
+                best_score = score
+                best_bin_data = bin_data
+                best_reason = reason
+
+        # Normalisation : score max approximé à 100 * nombre de tokens
+        max_possible = max(100 * len(tokens), 1)
+        confidence = min(best_score / max_possible, 1.0)
+
+        if best_bin_data is None or confidence < CONFIDENCE_THRESHOLD:
+            match_results.append({
+                "original_line": line,
+                "matched_id": None,
+                "matched_title": None,
+                "drawer": None,
+                "layer": None,
+                "similarity_reason": "Aucune correspondance suffisante trouvée (confiance < 60%)",
+                "status": "absent",
+                "confidence": round(confidence, 2),
+            })
+        else:
+            is_exact = confidence >= 0.9
+            match_results.append({
+                "original_line": line,
+                "matched_id": best_bin_data["bin_obj"].id,
+                "matched_title": best_bin_data["title"],
+                "drawer": best_bin_data["drawer"],
+                "layer": best_bin_data["layer"],
+                "similarity_reason": best_reason,
+                "status": "exact" if is_exact else "proche",
+                "confidence": round(confidence, 2),
+            })
+
+    logger.info(f"✅ BOM match terminé — {len(match_results)} résultat(s)")
+    return {"results": match_results}
 
 
 # Monter le routeur API sous le préfixe /api

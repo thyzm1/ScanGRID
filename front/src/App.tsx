@@ -8,6 +8,8 @@ import { Settings } from './components/Settings';
 import SearchBar from './components/SearchBar';
 import BinEditorModal from './components/BinEditorModal';
 import ReorganizationPlanner from './components/ReorganizationPlanner';
+import BOMGenerator from './components/BOMGenerator';
+import BOMImport from './components/BOMImport';
 import { apiClient } from './services/api';
 import type { Bin } from './types/api';
 import { recordBinOpen } from './utils/analytics';
@@ -42,22 +44,22 @@ function App() {
       .listDrawers()
       .then((data) => {
         setDrawers(data);
-        
+
         // Restore last state if available
         if (lastDrawerId) {
-            const savedDrawer = data.find(d => d.drawer_id === lastDrawerId);
-            if (savedDrawer) {
+          const savedDrawer = data.find(d => d.drawer_id === lastDrawerId);
+          if (savedDrawer) {
 
-                setCurrentDrawer(savedDrawer);
-                
-                // Override layer index if valid
-                if (lastLayerIndex) {
-                    const idx = parseInt(lastLayerIndex, 10);
-                    if (!isNaN(idx) && idx < savedDrawer.layers.length) {
-                         useStore.setState({ currentLayerIndex: idx });
-                    }
-                }
+            setCurrentDrawer(savedDrawer);
+
+            // Override layer index if valid
+            if (lastLayerIndex) {
+              const idx = parseInt(lastLayerIndex, 10);
+              if (!isNaN(idx) && idx < savedDrawer.layers.length) {
+                useStore.setState({ currentLayerIndex: idx });
+              }
             }
+          }
         }
       })
       .catch((err) => console.error('Failed to load drawers:', err));
@@ -227,34 +229,59 @@ function App() {
             <div className="flex items-center gap-0.5 bg-[var(--color-bg)] rounded-md p-0.5">
               <button
                 onClick={() => setViewMode('2D')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                  viewMode === '2D'
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${viewMode === '2D'
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                }`}
+                  }`}
               >
                 2D
               </button>
               <button
                 onClick={() => setViewMode('3D')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                  viewMode === '3D'
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${viewMode === '3D'
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                }`}
+                  }`}
               >
                 3D
               </button>
             </div>
           )}
 
+          {/* BOM Generator button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'bom' ? '2D' : 'bom')}
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'bom'
+                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              }`}
+            title="BOM Generator"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </button>
+
+          {/* BOM Import button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'bom-import' ? '2D' : 'bom-import')}
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'bom-import'
+                ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              }`}
+            title="Import BOM"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </button>
+
           <button
             onClick={() => setViewMode(viewMode === 'organizer' ? '2D' : 'organizer')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'organizer'
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'organizer'
                 ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
-            }`}
+              }`}
             title="Réorganisation intelligente"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,11 +291,10 @@ function App() {
 
           <button
             onClick={() => setViewMode(viewMode === 'settings' ? '2D' : 'settings')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'settings'
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'settings'
                 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
-            }`}
+              }`}
             title="Paramètres"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,7 +319,7 @@ function App() {
                 onClick={() => setSidebarOpen(false)}
                 className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
               />
-              
+
               {/* Sidebar Panel */}
               <motion.aside
                 initial={{ x: -320 }}
@@ -316,6 +342,10 @@ function App() {
             <Settings />
           ) : viewMode === 'organizer' ? (
             <ReorganizationPlanner />
+          ) : viewMode === 'bom' ? (
+            <BOMGenerator />
+          ) : viewMode === 'bom-import' ? (
+            <BOMImport />
           ) : currentDrawer ? (
             <>
               {/* View Area */}
@@ -330,8 +360,8 @@ function App() {
                       transition={{ duration: 0.2 }}
                       className="h-full"
                     >
-                      <GridEditor3 
-                        onBinClick={handleBinClick} 
+                      <GridEditor3
+                        onBinClick={handleBinClick}
                         onBinDoubleClick={handleBinDoubleClick}
                       />
                     </motion.div>
