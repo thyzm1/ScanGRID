@@ -5,6 +5,7 @@ from sqlalchemy import String, Integer, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List, Optional, Dict, Any
 import uuid
+import datetime
 
 from database import Base
 
@@ -84,3 +85,47 @@ class Bin(Base):
     
     def __repr__(self):
         return f"<Bin(id={self.id}, pos=({self.x_grid},{self.y_grid}), category={self.category_id}, title={self.content.get('title') if self.content else 'N/A'})>"
+
+
+# ============= PROJECTS =============
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False, default=lambda: datetime.datetime.utcnow().isoformat())
+
+    # Relation
+    project_bins: Mapped[List["ProjectBin"]] = relationship(
+        "ProjectBin",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
+    def __repr__(self):
+        return f"<Project(id={self.id}, name={self.name})>"
+
+
+class ProjectBin(Base):
+    """
+    Association entre un projet et un bin de l'inventaire.
+    bin_id est une référence "soft" (string) — pas de FK dure —
+    pour éviter la cascade si un bin est supprimé.
+    """
+    __tablename__ = "project_bins"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id: Mapped[str] = mapped_column(String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    bin_id: Mapped[str] = mapped_column(String, nullable=False)   # soft ref
+    qty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    note: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Relation
+    project: Mapped["Project"] = relationship("Project", back_populates="project_bins")
+
+    def __repr__(self):
+        return f"<ProjectBin(id={self.id}, project={self.project_id}, bin={self.bin_id}, qty={self.qty})>"
+

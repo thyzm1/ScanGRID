@@ -10,6 +10,7 @@ import BinEditorModal from './components/BinEditorModal';
 import ReorganizationPlanner from './components/ReorganizationPlanner';
 import BOMGenerator from './components/BOMGenerator';
 import BOMImport from './components/BOMImport';
+import ProjectManager from './components/ProjectManager';
 import { apiClient } from './services/api';
 import type { Bin } from './types/api';
 import { recordBinOpen } from './utils/analytics';
@@ -230,8 +231,8 @@ function App() {
               <button
                 onClick={() => setViewMode('2D')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${viewMode === '2D'
-                    ? 'bg-blue-500 text-white shadow-md'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  ? 'bg-blue-500 text-white shadow-md'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
                   }`}
               >
                 2D
@@ -239,8 +240,8 @@ function App() {
               <button
                 onClick={() => setViewMode('3D')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${viewMode === '3D'
-                    ? 'bg-blue-500 text-white shadow-md'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                  ? 'bg-blue-500 text-white shadow-md'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
                   }`}
               >
                 3D
@@ -252,8 +253,8 @@ function App() {
           <button
             onClick={() => setViewMode(viewMode === 'bom' ? '2D' : 'bom')}
             className={`p-2 rounded-lg transition-colors ${viewMode === 'bom'
-                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               }`}
             title="BOM Generator"
           >
@@ -266,8 +267,8 @@ function App() {
           <button
             onClick={() => setViewMode(viewMode === 'bom-import' ? '2D' : 'bom-import')}
             className={`p-2 rounded-lg transition-colors ${viewMode === 'bom-import'
-                ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
+              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               }`}
             title="Import BOM"
           >
@@ -276,11 +277,25 @@ function App() {
             </svg>
           </button>
 
+          {/* Project Manager button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'projects' ? '2D' : 'projects')}
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'projects'
+                ? 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              }`}
+            title="Gestion de Projets"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+          </button>
+
           <button
             onClick={() => setViewMode(viewMode === 'organizer' ? '2D' : 'organizer')}
             className={`p-2 rounded-lg transition-colors ${viewMode === 'organizer'
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               }`}
             title="Réorganisation intelligente"
           >
@@ -292,8 +307,8 @@ function App() {
           <button
             onClick={() => setViewMode(viewMode === 'settings' ? '2D' : 'settings')}
             className={`p-2 rounded-lg transition-colors ${viewMode === 'settings'
-                ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+              ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               }`}
             title="Paramètres"
           >
@@ -346,6 +361,8 @@ function App() {
             <BOMGenerator />
           ) : viewMode === 'bom-import' ? (
             <BOMImport />
+          ) : viewMode === 'projects' ? (
+            <ProjectManager />
           ) : currentDrawer ? (
             <>
               {/* View Area */}

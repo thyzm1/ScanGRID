@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../services/api';
 
@@ -25,14 +26,16 @@ function injectPrintStyles() {
     style.id = PRINT_STYLE_ID;
     style.textContent = `
     @media print {
-      body > * { display: none !important; }
-      #bom-import-print-area { display: block !important; }
+      /* Hide the React app root — portal is mounted in body directly */
+      #root { display: none !important; }
       #bom-import-print-area {
+        display: block !important;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         color: #111827;
         padding: 24px;
         max-width: 960px;
         margin: 0 auto;
+        position: static;
       }
       #bom-import-print-area h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
       #bom-import-print-area .meta { font-size: 11px; color: #6b7280; margin-bottom: 20px; }
@@ -58,6 +61,9 @@ function injectPrintStyles() {
         padding-top: 8px;
       }
     }
+    @media screen {
+      #bom-import-print-area { display: none !important; }
+    }
   `;
     document.head.appendChild(style);
 }
@@ -82,8 +88,6 @@ const STATUS_CONFIG = {
     },
 } as const;
 
-// ─── Example BOM text ─────────────────────────────────────────────────────────
-
 const EXAMPLE_TEXT = `Résistance 10k 0603 5%
 Condensateur 100nF 0402
 LED rouge 3mm
@@ -97,26 +101,53 @@ export default function BOMImport() {
     const [inputText, setInputText] = useState('');
     const [results, setResults] = useState<MatchResult[]>([]);
     const [loading, setLoading] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [analyzed, setAnalyzed] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Inject print styles once
-    useState(() => { injectPrintStyles(); });
+    injectPrintStyles();
+
+    // ─── PDF file upload ───────────────────────────────────────────────────────
+
+    const handlePdfUpload = async (file: File) => {
+        if (!file || file.type !== 'application/pdf') {
+            setError('Veuillez sélectionner un fichier PDF valide.');
+            return;
+        }
+        setPdfLoading(true);
+        setError(null);
+        try {
+            const extracted = await apiClient.extractPDFText(file);
+            const lines = extracted.lines.filter((l: string) => l.trim().length > 0);
+            setInputText(lines.join('\n'));
+            setAnalyzed(false);
+            setResults([]);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Erreur lors de l\'extraction du PDF');
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handlePdfUpload(file);
+        // reset input so same file can be re-selected
+        e.target.value = '';
+    };
+
+    // ─── BOM analysis ─────────────────────────────────────────────────────────
 
     const handleAnalyze = async () => {
         if (!inputText.trim()) return;
-
-        const lines = inputText
-            .split('\n')
-            .map((l) => l.trim())
-            .filter((l) => l.length > 0);
-
+        const lines = inputText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
         if (lines.length === 0) return;
 
         setLoading(true);
         setError(null);
         setAnalyzed(false);
-
         try {
             const data = await apiClient.matchBOM(lines);
             setResults(data.results);
@@ -128,9 +159,7 @@ export default function BOMImport() {
         }
     };
 
-    const handleExportPDF = () => {
-        window.print();
-    };
+    const handleExportPDF = () => window.print();
 
     const stats = {
         exact: results.filter((r) => r.status === 'exact').length,
@@ -138,50 +167,60 @@ export default function BOMImport() {
         absent: results.filter((r) => r.status === 'absent').length,
     };
 
+    // ─── Render ───────────────────────────────────────────────────────────────
+
     return (
         <div className="h-full overflow-y-auto bg-[var(--color-bg-secondary)] p-4 sm:p-6">
-            {/* Hidden Print Area */}
-            <div id="bom-import-print-area" style={{ display: 'none' }}>
-                <h1>Rapport d'analyse BOM — ScanGRID</h1>
-                <div className="meta">
-                    Généré le {new Date().toLocaleDateString('fr-FR')} à{' '}
-                    {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                    {' '}• {results.length} ligne(s) analysée(s) — {stats.exact} exact(s), {stats.proche} proche(s), {stats.absent} absent(s)
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Ligne originale</th>
-                            <th>Composant trouvé</th>
-                            <th>Localisation</th>
-                            <th>Raison</th>
-                            <th>Statut</th>
-                            <th>Confiance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {results.map((r, i) => (
-                            <tr key={i}>
-                                <td>{i + 1}</td>
-                                <td>{r.original_line}</td>
-                                <td>{r.matched_title || '—'}</td>
-                                <td>{r.drawer ? `${r.drawer} — Couche ${r.layer}` : '—'}</td>
-                                <td>{r.similarity_reason}</td>
-                                <td>
-                                    <span className={`badge ${r.status}`}>
-                                        {STATUS_CONFIG[r.status].label}
-                                    </span>
-                                </td>
-                                <td>{Math.round(r.confidence * 100)}%</td>
+            {/* Print Area — portal mounted directly in <body> to avoid blank PDF */}
+            {createPortal(
+                <div id="bom-import-print-area">
+                    <h1>Rapport d'analyse BOM — ScanGRID</h1>
+                    <div className="meta">
+                        Généré le {new Date().toLocaleDateString('fr-FR')} à{' '}
+                        {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        {' '}• {results.length} ligne(s) — {stats.exact} exact(s), {stats.proche} proche(s), {stats.absent} absent(s)
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Ligne originale</th>
+                                <th>Composant trouvé</th>
+                                <th>Localisation</th>
+                                <th>Raison</th>
+                                <th>Statut</th>
+                                <th>Confiance</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <div className="footer">
-                    Document généré par ScanGRID — Gestionnaire d'inventaire Gridfinity
-                </div>
-            </div>
+                        </thead>
+                        <tbody>
+                            {results.map((r, i) => (
+                                <tr key={i}>
+                                    <td>{i + 1}</td>
+                                    <td>{r.original_line}</td>
+                                    <td>{r.matched_title || '—'}</td>
+                                    <td>{r.drawer ? `${r.drawer} — Couche ${r.layer}` : '—'}</td>
+                                    <td>{r.similarity_reason}</td>
+                                    <td><span className={`badge ${r.status}`}>{STATUS_CONFIG[r.status].label}</span></td>
+                                    <td>{Math.round(r.confidence * 100)}%</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <div className="footer">
+                        Document généré par ScanGRID — Gestionnaire d'inventaire Gridfinity
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Hidden file input */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                className="hidden"
+            />
 
             <div className="max-w-6xl mx-auto space-y-4">
                 {/* Header */}
@@ -190,7 +229,7 @@ export default function BOMImport() {
                         <div>
                             <h2 className="text-xl sm:text-2xl font-bold">Import BOM</h2>
                             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-                                Collez votre nomenclature (texte extrait d'un PDF) et trouvez les correspondances dans votre inventaire.
+                                Importez un PDF ou collez votre nomenclature pour trouver les correspondances dans votre inventaire.
                             </p>
                         </div>
                         {analyzed && results.length > 0 && (
@@ -206,20 +245,50 @@ export default function BOMImport() {
                         )}
                     </div>
 
-                    {/* Input Area */}
+                    {/* PDF Upload + Textarea */}
                     <div className="mt-4 space-y-3">
-                        <div className="relative">
-                            <textarea
-                                value={inputText}
-                                onChange={(e) => {
-                                    setInputText(e.target.value);
-                                    if (analyzed) setAnalyzed(false);
-                                }}
-                                placeholder={`Une référence par ligne, par exemple :\n${EXAMPLE_TEXT}`}
-                                rows={8}
-                                className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm resize-y focus:outline-none focus:border-blue-500 transition-colors font-mono leading-relaxed"
-                            />
+
+                        {/* Import PDF button */}
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center justify-center gap-3 p-4 border-2 border-dashed border-[var(--color-border)] rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-500/5 transition-all group"
+                        >
+                            {pdfLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                    Extraction du texte PDF en cours...
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div className="text-sm">
+                                        <span className="font-medium text-blue-600 dark:text-blue-400">Importer un fichier PDF</span>
+                                        <span className="text-[var(--color-text-secondary)]"> — le texte sera extrait automatiquement</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
+
+                        <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
+                            <div className="flex-1 h-px bg-[var(--color-border)]" />
+                            ou saisir manuellement
+                            <div className="flex-1 h-px bg-[var(--color-border)]" />
+                        </div>
+
+                        <textarea
+                            value={inputText}
+                            onChange={(e) => {
+                                setInputText(e.target.value);
+                                if (analyzed) setAnalyzed(false);
+                            }}
+                            placeholder={`Une référence par ligne, par exemple :\n${EXAMPLE_TEXT}`}
+                            rows={7}
+                            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm resize-y focus:outline-none focus:border-blue-500 transition-colors font-mono leading-relaxed"
+                        />
 
                         <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -242,16 +311,14 @@ export default function BOMImport() {
                                 )}
                             </button>
 
-                            {inputText && (
+                            {inputText ? (
                                 <button
                                     onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); }}
                                     className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
                                 >
                                     Effacer
                                 </button>
-                            )}
-
-                            {!inputText && (
+                            ) : (
                                 <button
                                     onClick={() => setInputText(EXAMPLE_TEXT)}
                                     className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
@@ -261,9 +328,7 @@ export default function BOMImport() {
                             )}
                         </div>
 
-                        {error && (
-                            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-                        )}
+                        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
                     </div>
                 </div>
 
@@ -276,104 +341,71 @@ export default function BOMImport() {
                             exit={{ opacity: 0 }}
                             className="space-y-4"
                         >
-                            {/* Stats Bar */}
+                            {/* Stats */}
                             <div className="grid grid-cols-3 gap-3">
-                                <div className="rounded-2xl border border-emerald-300/50 bg-emerald-50/60 dark:bg-emerald-900/10 p-4 text-center">
-                                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.exact}</div>
-                                    <div className="text-xs text-emerald-700 dark:text-emerald-500 font-medium mt-0.5">Exact</div>
-                                </div>
-                                <div className="rounded-2xl border border-amber-300/50 bg-amber-50/60 dark:bg-amber-900/10 p-4 text-center">
-                                    <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.proche}</div>
-                                    <div className="text-xs text-amber-700 dark:text-amber-500 font-medium mt-0.5">Proche</div>
-                                </div>
-                                <div className="rounded-2xl border border-red-300/50 bg-red-50/60 dark:bg-red-900/10 p-4 text-center">
-                                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.absent}</div>
-                                    <div className="text-xs text-red-700 dark:text-red-500 font-medium mt-0.5">Absent</div>
-                                </div>
+                                {(['exact', 'proche', 'absent'] as const).map((s) => {
+                                    const colors = {
+                                        exact: 'border-emerald-300/50 bg-emerald-50/60 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-emerald-700 dark:text-emerald-500',
+                                        proche: 'border-amber-300/50 bg-amber-50/60 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-amber-700 dark:text-amber-500',
+                                        absent: 'border-red-300/50 bg-red-50/60 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-red-700 dark:text-red-500',
+                                    }[s];
+                                    return (
+                                        <div key={s} className={`rounded-2xl border p-4 text-center ${colors}`}>
+                                            <div className="text-2xl font-bold">{stats[s]}</div>
+                                            <div className="text-xs font-medium mt-0.5 capitalize">{STATUS_CONFIG[s].label}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            {/* Results Table */}
+                            {/* Table */}
                             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm overflow-hidden">
                                 <div className="p-4 border-b border-[var(--color-border)]">
                                     <h3 className="font-semibold text-sm">
-                                        Résultats d'analyse —{' '}
-                                        <span className="text-[var(--color-text-secondary)] font-normal">
-                                            {results.length} ligne(s) traitée(s)
-                                        </span>
+                                        Résultats —{' '}
+                                        <span className="text-[var(--color-text-secondary)] font-normal">{results.length} ligne(s)</span>
                                     </h3>
                                 </div>
-
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-[var(--color-border)]">
-                                                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
-                                                    Ligne originale
-                                                </th>
-                                                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide hidden sm:table-cell">
-                                                    Correspondance trouvée
-                                                </th>
-                                                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide hidden md:table-cell">
-                                                    Raison
-                                                </th>
-                                                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
-                                                    Statut
-                                                </th>
-                                                <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide hidden sm:table-cell">
-                                                    Confiance
-                                                </th>
+                                                {['Ligne originale', 'Correspondance', 'Raison', 'Statut', 'Confiance'].map((h, i) => (
+                                                    <th key={h} className={`text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide ${i >= 1 && i <= 2 ? 'hidden sm:table-cell' : i === 4 ? 'hidden sm:table-cell text-right' : ''}`}>{h}</th>
+                                                ))}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {results.map((result, i) => {
                                                 const cfg = STATUS_CONFIG[result.status];
                                                 return (
-                                                    <tr
-                                                        key={i}
-                                                        className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
-                                                    >
+                                                    <tr key={i} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] transition-colors">
                                                         <td className="px-4 py-3">
-                                                            <span className="font-mono text-xs text-[var(--color-text-secondary)]">
-                                                                {result.original_line}
-                                                            </span>
+                                                            <span className="font-mono text-xs text-[var(--color-text-secondary)]">{result.original_line}</span>
                                                         </td>
                                                         <td className="px-4 py-3 hidden sm:table-cell">
                                                             {result.matched_title ? (
                                                                 <div>
                                                                     <div className="font-medium text-sm">{result.matched_title}</div>
                                                                     {result.drawer && (
-                                                                        <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                                                                            {result.drawer} — Couche {result.layer}
-                                                                        </div>
+                                                                        <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">{result.drawer} — Couche {result.layer}</div>
                                                                     )}
                                                                 </div>
-                                                            ) : (
-                                                                <span className="text-xs text-[var(--color-text-secondary)]">—</span>
-                                                            )}
+                                                            ) : <span className="text-xs text-[var(--color-text-secondary)]">—</span>}
                                                         </td>
-                                                        <td className="px-4 py-3 hidden md:table-cell">
-                                                            <span className="text-xs text-[var(--color-text-secondary)]">
-                                                                {result.similarity_reason}
-                                                            </span>
+                                                        <td className="px-4 py-3 hidden sm:table-cell">
+                                                            <span className="text-xs text-[var(--color-text-secondary)]">{result.similarity_reason}</span>
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <span
-                                                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${cfg.className}`}
-                                                            >
-                                                                <span>{cfg.icon}</span>
-                                                                {cfg.label}
+                                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${cfg.className}`}>
+                                                                {cfg.icon} {cfg.label}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right hidden sm:table-cell">
+                                                        <td className="px-4 py-3 hidden sm:table-cell">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <div className="w-16 h-1.5 rounded-full bg-[var(--color-bg-secondary)] overflow-hidden">
                                                                     <div
-                                                                        className={`h-full rounded-full transition-all ${result.status === 'exact'
-                                                                                ? 'bg-emerald-500'
-                                                                                : result.status === 'proche'
-                                                                                    ? 'bg-amber-500'
-                                                                                    : 'bg-red-500'
-                                                                            }`}
+                                                                        className={`h-full rounded-full ${result.status === 'exact' ? 'bg-emerald-500' : result.status === 'proche' ? 'bg-amber-500' : 'bg-red-500'}`}
                                                                         style={{ width: `${Math.round(result.confidence * 100)}%` }}
                                                                     />
                                                                 </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../services/api';
 
@@ -52,14 +53,16 @@ function injectPrintStyles() {
   style.id = PRINT_STYLE_ID;
   style.textContent = `
     @media print {
-      body > * { display: none !important; }
-      #bom-print-area { display: block !important; }
+      /* Hide the React app root — the portal is mounted directly in body */
+      #root { display: none !important; }
       #bom-print-area {
+        display: block !important;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         color: #111827;
         padding: 24px;
         max-width: 900px;
         margin: 0 auto;
+        position: static;
       }
       #bom-print-area h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
       #bom-print-area .bom-meta { font-size: 11px; color: #6b7280; margin-bottom: 20px; }
@@ -80,8 +83,8 @@ function injectPrintStyles() {
       #bom-print-area .bom-total {
         margin-top: 16px;
         text-align: right;
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 700;
       }
       #bom-print-area .bom-footer {
         margin-top: 24px;
@@ -90,6 +93,10 @@ function injectPrintStyles() {
         border-top: 1px solid #e5e7eb;
         padding-top: 8px;
       }
+    }
+    /* Hide portal in normal (screen) mode */
+    @media screen {
+      #bom-print-area { display: none !important; }
     }
   `;
   document.head.appendChild(style);
@@ -102,7 +109,6 @@ export default function BOMGenerator() {
   const [results, setResults] = useState<BOMResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const printAreaRef = useRef<HTMLDivElement>(null);
 
   const debouncedQuery = useDebounce(query, 300);
 
@@ -166,53 +172,50 @@ export default function BOMGenerator() {
 
   return (
     <div className="h-full overflow-y-auto bg-[var(--color-bg-secondary)] p-4 sm:p-6">
-      {/* Hidden Print Area */}
-      <div id="bom-print-area" style={{ display: 'none' }} ref={printAreaRef}>
-        <h1>Nomenclature BOM — ScanGRID</h1>
-        <div className="bom-meta">
-          Généré le {new Date().toLocaleDateString('fr-FR')} à{' '}
-          {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-          {' '}• {cart.length} référence(s)
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Référence</th>
-              <th>Désignation</th>
-              <th>Localisation</th>
-              <th>Qté</th>
-              <th>Prix unit. (€)</th>
-              <th>Total (€)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cart.map((item, i) => (
-              <tr key={item.bin_id}>
-                <td>{i + 1}</td>
-                <td>{item.ref}</td>
-                <td>{item.title}</td>
-                <td>
-                  {item.drawer} — Couche {item.layer}
-                </td>
-                <td>{item.qty}</td>
-                <td>{item.unit_price > 0 ? item.unit_price.toFixed(2) : '—'}</td>
-                <td>
-                  {item.unit_price > 0
-                    ? (item.qty * item.unit_price).toFixed(2)
-                    : '—'}
-                </td>
+      {/* Print Area — mounted via portal directly in <body> to fix blank PDF bug */}
+      {createPortal(
+        <div id="bom-print-area">
+          <h1>Nomenclature BOM — ScanGRID</h1>
+          <div className="bom-meta">
+            Généré le {new Date().toLocaleDateString('fr-FR')} à{' '}
+            {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            {' '}• {cart.length} référence(s)
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Référence</th>
+                <th>Désignation</th>
+                <th>Localisation</th>
+                <th>Qté</th>
+                <th>Prix unit. (€)</th>
+                <th>Total (€)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {totalPrice > 0 && (
-          <div className="bom-total">Total : {totalPrice.toFixed(2)} €</div>
-        )}
-        <div className="bom-footer">
-          Document généré par ScanGRID — Gestionnaire d'inventaire Gridfinity
-        </div>
-      </div>
+            </thead>
+            <tbody>
+              {cart.map((item, i) => (
+                <tr key={item.bin_id}>
+                  <td>{i + 1}</td>
+                  <td>{item.ref}</td>
+                  <td>{item.title}</td>
+                  <td>{item.drawer} — Couche {item.layer}</td>
+                  <td>{item.qty}</td>
+                  <td>{item.unit_price > 0 ? item.unit_price.toFixed(2) : '—'}</td>
+                  <td>{item.unit_price > 0 ? (item.qty * item.unit_price).toFixed(2) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {totalPrice > 0 && (
+            <div className="bom-total">Total : {totalPrice.toFixed(2)} €</div>
+          )}
+          <div className="bom-footer">
+            Document généré par ScanGRID — Gestionnaire d'inventaire Gridfinity
+          </div>
+        </div>,
+        document.body
+      )}
 
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}

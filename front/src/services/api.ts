@@ -166,6 +166,62 @@ class ApiClient {
       body: JSON.stringify({ lines }),
     });
   }
+
+  async extractPDFText(file: File): Promise<{ lines: string[]; raw_text: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const url = `${this.baseUrl}/bom/extract-pdf`;
+    const response = await fetch(url, { method: 'POST', body: formData });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+      throw new Error(err.detail || 'PDF extraction failed');
+    }
+    return response.json();
+  }
+
+  // ========================================================================
+  // PROJECT MANAGEMENT
+  // ========================================================================
+
+  async listProjects(): Promise<any[]> {
+    return this.request('/projects');
+  }
+
+  async createProject(data: { name: string; description?: string }): Promise<any> {
+    return this.request('/projects', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateProject(id: string, data: { name?: string; description?: string }): Promise<any> {
+    return this.request(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deleteProject(id: string): Promise<{ message: string }> {
+    return this.request(`/projects/${id}`, { method: 'DELETE' });
+  }
+
+  async getProjectBins(projectId: string): Promise<any[]> {
+    return this.request(`/projects/${projectId}/bins`);
+  }
+
+  async addProjectBin(projectId: string, data: { bin_id: string; qty: number; note?: string }): Promise<any> {
+    return this.request(`/projects/${projectId}/bins`, { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async removeProjectBin(projectId: string, pbId: string): Promise<{ message: string }> {
+    return this.request(`/projects/${projectId}/bins/${pbId}`, { method: 'DELETE' });
+  }
+
+  async downloadProjectCSV(projectId: string, projectName: string): Promise<void> {
+    const url = `${this.baseUrl}/projects/${projectId}/bom.csv`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('CSV export failed');
+    const blob = await response.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `BOM_${projectName.replace(/\s+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 }
 
 export const apiClient = new ApiClient();

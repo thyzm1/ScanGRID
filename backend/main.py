@@ -8,17 +8,17 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from pydantic import BaseModel
 from database import get_db, init_db
-from models import Drawer, Layer, Bin, Category
+from models import Drawer, Layer, Bin, Category, Project, ProjectBin
 from schemas import (
     DrawerCreate,
     DrawerResponse,
@@ -1062,8 +1062,286 @@ async def bom_match(
     return {"results": match_results}
 
 
+# ============= BOM PDF EXTRACT =============
+
+class BOMExtractResult(BaseModel):
+    lines: list[str]
+    raw_text: str
+    page_count: int
+
+@api_router.post("/bom/extract-pdf", response_model=BOMExtractResult)
+async def bom_extract_pdf(file: UploadFile = File(...)):
+    """
+    Extrait le texte d'un fichier PDF uploadé (multipart/form-data).
+    Retourne les lignes tokenisées prêtes à être envoyées à /bom/match.
+    Utilise pypdf — aucune dépendance lourde, pas de serveur externe.
+    """
+    if file.content_type not in ("application/pdf", "application/octet-stream"):
+        # Accept octet-stream too in case browser sends it that way
+        if not (file.filename or "").lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Le fichier doit être un PDF.")
+
+    try:
+        import pypdf
+        import io
+
+        raw_bytes = await file.read()
+        if not raw_bytes:
+            raise HTTPException(status_code=400, detail="Le fichier PDF est vide.")
+
+        reader = pypdf.PdfReader(io.BytesIO(raw_bytes))
+        page_count = len(reader.pages)
+
+        full_text_parts = []
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                full_text_parts.append(text.strip())
+
+        raw_text = "\n".join(full_text_parts)
+
+        # Tokenise: split by newlines, remove blank lines & very short tokens
+        lines = [
+            ln.strip()
+            for ln in raw_text.splitlines()
+            if ln.strip() and len(ln.strip()) >= 3
+        ]
+
+        return BOMExtractResult(lines=lines, raw_text=raw_text, page_count=page_count)
+
+    except pypdf.errors.PdfReadError as e:
+        raise HTTPException(status_code=422, detail=f"PDF illisible : {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur extraction PDF : {e}")
+
+
+# ============= PROJECTS — Pydantic models =============
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+class ProjectBinAdd(BaseModel):
+    bin_id: str
+    qty: int = 1
+    note: str | None = None
+
+
+# ============= PROJECTS — CRUD =============
+
+@api_router.get("/projects")
+async def list_projects(db: AsyncSession = Depends(get_db)):
+    """Liste tous les projets (sans les bins pour légèreté)."""
+    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+    projects = result.scalars().all()
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "created_at": p.created_at,
+            "bin_count": len(p.project_bins),
+        }
+        for p in projects
+    ]
+
+
+@api_router.post("/projects", status_code=201)
+async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)):
+    """Crée un nouveau projet."""
+    project = Project(name=data.name, description=data.description)
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+    return {"id": project.id, "name": project.name, "description": project.description,
+            "created_at": project.created_at, "bin_count": 0}
+
+
+@api_router.patch("/projects/{project_id}")
+async def update_project(project_id: str, data: ProjectUpdate, db: AsyncSession = Depends(get_db)):
+    """Modifie le nom ou la description d'un projet."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+    if data.name is not None:
+        project.name = data.name
+    if data.description is not None:
+        project.description = data.description
+    await db.commit()
+    await db.refresh(project)
+    return {"id": project.id, "name": project.name, "description": project.description,
+            "created_at": project.created_at}
+
+
+@api_router.delete("/projects/{project_id}")
+async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Supprime un projet et ses associations (cascade)."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+    await db.delete(project)
+    await db.commit()
+    return {"message": "Projet supprimé."}
+
+
+# ============= PROJECTS — Bin management =============
+
+@api_router.get("/projects/{project_id}/bins")
+async def get_project_bins(project_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Retourne les composants du projet avec leur localisation actuelle résolue
+    depuis l'inventaire (tiroir, couche, position XY).
+    """
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+    # Récupérer tous les bins de l'inventaire en une seule requête
+    all_bins_result = await db.execute(
+        select(Bin).options(selectinload(Bin.layer).selectinload(Layer.drawer))
+    )
+    bins_by_id = {b.id: b for b in all_bins_result.scalars().all()}
+
+    enriched = []
+    for pb in project.project_bins:
+        bin_obj = bins_by_id.get(pb.bin_id)
+        entry = {
+            "pb_id": pb.id,
+            "bin_id": pb.bin_id,
+            "qty": pb.qty,
+            "note": pb.note,
+            "found": bin_obj is not None,
+        }
+        if bin_obj and bin_obj.content:
+            layer = bin_obj.layer
+            drawer = layer.drawer if layer else None
+            entry.update({
+                "title": bin_obj.content.get("title", "—"),
+                "description": bin_obj.content.get("description", ""),
+                "color": bin_obj.color,
+                "x": bin_obj.x_grid,
+                "y": bin_obj.y_grid,
+                "layer": layer.z_index if layer else None,
+                "drawer": drawer.name if drawer else "—",
+                "drawer_id": drawer.id if drawer else None,
+            })
+        else:
+            entry.update({
+                "title": f"[Bin supprimé: {pb.bin_id[:8]}...]",
+                "description": "",
+                "color": None,
+                "x": None,
+                "y": None,
+                "layer": None,
+                "drawer": "—",
+                "drawer_id": None,
+            })
+        enriched.append(entry)
+
+    return enriched
+
+
+@api_router.post("/projects/{project_id}/bins", status_code=201)
+async def add_project_bin(project_id: str, data: ProjectBinAdd, db: AsyncSession = Depends(get_db)):
+    """Ajoute un composant au projet (liaison soft par bin_id string)."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+    # Empêcher les doublons
+    existing = next((pb for pb in project.project_bins if pb.bin_id == data.bin_id), None)
+    if existing:
+        existing.qty += data.qty
+        await db.commit()
+        return {"pb_id": existing.id, "bin_id": existing.bin_id, "qty": existing.qty, "note": existing.note}
+
+    pb = ProjectBin(project_id=project_id, bin_id=data.bin_id, qty=data.qty, note=data.note)
+    db.add(pb)
+    await db.commit()
+    await db.refresh(pb)
+    return {"pb_id": pb.id, "bin_id": pb.bin_id, "qty": pb.qty, "note": pb.note}
+
+
+@api_router.delete("/projects/{project_id}/bins/{pb_id}")
+async def remove_project_bin(project_id: str, pb_id: str, db: AsyncSession = Depends(get_db)):
+    """Retire un composant du projet."""
+    result = await db.execute(
+        select(ProjectBin).where(ProjectBin.id == pb_id, ProjectBin.project_id == project_id)
+    )
+    pb = result.scalar_one_or_none()
+    if not pb:
+        raise HTTPException(status_code=404, detail="Association introuvable.")
+    await db.delete(pb)
+    await db.commit()
+    return {"message": "Composant retiré du projet."}
+
+
+# ============= PROJECTS — CSV export =============
+
+@api_router.get("/projects/{project_id}/bom.csv")
+async def export_project_csv(project_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Exporte la BOM du projet au format CSV (StreamingResponse).
+    Le fichier est généré à la volée, sans écriture sur disque.
+    """
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+    all_bins_result = await db.execute(
+        select(Bin).options(selectinload(Bin.layer).selectinload(Layer.drawer))
+    )
+    bins_by_id = {b.id: b for b in all_bins_result.scalars().all()}
+
+    import csv, io as _io
+    output = _io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+
+    # Entête
+    writer.writerow(["#", "Bin ID", "Référence", "Désignation", "Tiroir", "Couche", "X", "Y", "Qté", "Note"])
+
+    for i, pb in enumerate(project.project_bins, 1):
+        bin_obj = bins_by_id.get(pb.bin_id)
+        if bin_obj and bin_obj.content:
+            layer = bin_obj.layer
+            drawer = layer.drawer if layer else None
+            writer.writerow([
+                i,
+                pb.bin_id,
+                bin_obj.content.get("title", ""),
+                bin_obj.content.get("description", ""),
+                drawer.name if drawer else "—",
+                layer.z_index if layer else "—",
+                bin_obj.x_grid,
+                bin_obj.y_grid,
+                pb.qty,
+                pb.note or "",
+            ])
+        else:
+            writer.writerow([i, pb.bin_id, "[Supprimé]", "", "—", "—", "—", "—", pb.qty, pb.note or ""])
+
+    csv_content = output.getvalue()
+    output.close()
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=BOM_{project_id[:8]}.csv"},
+    )
+
+
 # Monter le routeur API sous le préfixe /api
 app.include_router(api_router, prefix="/api")
+
 
 # ============= FRONTEND SPA CATCH-ALL =============
 

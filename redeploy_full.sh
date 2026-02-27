@@ -41,6 +41,7 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip install -r requirements.txt
+echo "✅ Dépendances installées (incl. pypdf + python-multipart pour BOM PDF)"
 
 # 3.1. Vérification et configuration d'Ollama
 echo "🤖 3.1. Configuration d'Ollama pour l'IA..."
@@ -101,6 +102,31 @@ if [ $? -eq 0 ]; then
 else
     echo "⚠️  Attention : La migration height_units a peut-être échoué (ou déjà faite)"
 fi
+echo "🗂️  Migration BOM Projects (tables projects + project_bins)..."
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python - <<'EOF'
+import asyncio
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(".")))
+from database import engine, init_db
+from models import Base
+import models  # noqa: F401 — assure que Project/ProjectBin sont enregistrés
+
+async def migrate():
+    async with engine.begin() as conn:
+        # CREATE TABLE IF NOT EXISTS — idempotent, ne touche pas aux données
+        await conn.run_sync(Base.metadata.create_all)
+    print("Tables OK")
+
+asyncio.run(migrate())
+EOF
+
+if [ $? -eq 0 ]; then
+    echo "✅ Tables projects / project_bins prêtes"
+else
+    echo "⚠️  Attention : migration Projects a peut-être échoué"
+fi
+
 cd ..
 
 # 4. Redémarrage PM2

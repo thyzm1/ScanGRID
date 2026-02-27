@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Drawer, Bin, Category } from '../types/api';
 
-export type ViewMode = '2D' | '3D' | 'organizer' | 'settings' | 'bom' | 'bom-import';
+export type ViewMode = '2D' | '3D' | 'organizer' | 'settings' | 'bom' | 'bom-import' | 'projects';
 export type EditMode = 'view' | 'edit';
 
 interface AppState {
