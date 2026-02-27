@@ -53,6 +53,24 @@ async def lifespan(app: FastAPI):
     """Initialise la base de données au démarrage"""
     logger.info("🚀 Démarrage du serveur ScanGRID...")
     await init_db()
+
+    # ---- Migrations de colonnes (ALTER TABLE idempotent) ----
+    # SQLite ne supporte pas "ADD COLUMN IF NOT EXISTS",
+    # donc on capture l'erreur si la colonne existe déjà.
+    from sqlalchemy import text
+    from database import engine as _engine
+    _migrations = [
+        "ALTER TABLE project_bins ADD COLUMN url TEXT",
+    ]
+    async with _engine.begin() as conn:
+        for stmt in _migrations:
+            try:
+                await conn.execute(text(stmt))
+                logger.info(f"✅ Migration OK : {stmt}")
+            except Exception:
+                # Colonne déjà présente — on ignore silencieusement
+                pass
+
     yield
     logger.info("🛑 Arrêt du serveur ScanGRID")
 

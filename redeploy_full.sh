@@ -111,12 +111,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(".")))
 from database import engine, init_db
 from models import Base
 import models  # noqa: F401 — assure que Project/ProjectBin sont enregistrés
+from sqlalchemy import text
 
 async def migrate():
+    # 1. Crée les tables manquantes (idempotent)
     async with engine.begin() as conn:
-        # CREATE TABLE IF NOT EXISTS — idempotent, ne touche pas aux données
         await conn.run_sync(Base.metadata.create_all)
     print("Tables OK")
+
+    # 2. Ajoute les colonnes manquantes (idempotent grâce au try/except)
+    _column_migrations = [
+        "ALTER TABLE project_bins ADD COLUMN url TEXT",
+    ]
+    async with engine.begin() as conn:
+        for stmt in _column_migrations:
+            try:
+                await conn.execute(text(stmt))
+                print(f"Migration colonne OK : {stmt}")
+            except Exception:
+                print(f"Colonne déjà présente (ignorée) : {stmt}")
 
 asyncio.run(migrate())
 EOF
