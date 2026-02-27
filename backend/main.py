@@ -667,66 +667,98 @@ def _score_bin(
     Si match_info est fourni, il sera rempli avec :
       - matched_item : premier article de la liste items qui matche
     """
-    q = query.lower().strip()
-    score = 0
+    q = normalize_string(query)
+    q_ns = q.replace(" ", "")
+    score: int = 0
 
     title: str = ""
     description: str = ""
     items: list = []
 
     if bin_obj.content and isinstance(bin_obj.content, dict):
-        title = str(bin_obj.content.get("title", "")).lower()
-        description = str(bin_obj.content.get("description", "")).lower()
+        t_val = bin_obj.content.get("title", "")
+        d_val = bin_obj.content.get("description", "")
         items = bin_obj.content.get("items") or []
+        
+        title = normalize_string(str(t_val) if t_val else "")
+        description = normalize_string(str(d_val) if d_val else "")
+
+    title_ns = title.replace(" ", "")
+    desc_ns = description.replace(" ", "")
 
     # Correspondance exacte dans le titre → score très élevé
-    if q == title:
+    if q_ns and q_ns == title_ns:
         score += 100
-    elif q in title:
+    elif q_ns and q_ns in title_ns:
         score += 60
     else:
         # Chaque mot de la requête trouvé dans le titre
-        for word in q.split():
-            if len(word) >= 3 and word in title:
-                score += 20
+        for word in str(q).split():
+            if len(word) >= 3:
+                if word in str(title):
+                    score += 20
+                else:
+                    for t_word in str(title).split():
+                        if difflib.SequenceMatcher(None, word, t_word).ratio() > 0.78:
+                            score += 15
+                            break
 
     # Description
-    if q in description:
+    if q_ns and q_ns in desc_ns:
         score += 30
     else:
-        for word in q.split():
-            if len(word) >= 3 and word in description:
-                score += 10
+        for word in str(q).split():
+            if len(word) >= 3:
+                if word in str(description):
+                    score += 10
+                else:
+                    for d_word in str(description).split():
+                        if difflib.SequenceMatcher(None, word, d_word).ratio() > 0.78:
+                            score += 8
+                            break
 
     # Articles contenus dans la boîte (items)
     matched_item = None
     for item in items:
-        item_lower = str(item).lower()
-        if q == item_lower:
+        item_str = str(item)
+        item_norm = normalize_string(item_str)
+        item_ns = item_norm.replace(" ", "")
+        if q_ns == item_ns:
             score += 80          # correspondance exacte item
-            matched_item = item
+            matched_item = item_str
             break
-        elif q in item_lower:
+        elif q_ns in item_ns:
             score += 45
             if matched_item is None:
-                matched_item = item
+                matched_item = item_str
         else:
-            for word in q.split():
-                if len(word) >= 3 and word in item_lower:
-                    score += 15
-                    if matched_item is None:
-                        matched_item = item
+            for word in str(q).split():
+                if len(word) >= 3:
+                    if word in item_norm:
+                        score += 15
+                        if matched_item is None:
+                            matched_item = item_str
+                    else:
+                        for i_word in str(item_norm).split():
+                            if difflib.SequenceMatcher(None, word, i_word).ratio() > 0.78:
+                                score += 10
+                                if matched_item is None:
+                                    matched_item = item_str
+                                break
 
     if match_info is not None:
         match_info["matched_item"] = matched_item
         match_info["items"] = [str(i) for i in items]
 
     # Catégorie
-    if category_name and q in category_name.lower():
-        score += 15
+    if category_name:
+        cat_norm = normalize_string(str(category_name))
+        if q_ns in cat_norm.replace(" ", ""):
+            score += 15
 
     # Nom du tiroir
-    if q in drawer_name.lower():
+    drawer_norm = normalize_string(str(drawer_name))
+    if q_ns in drawer_norm.replace(" ", ""):
         score += 5
 
     return score
@@ -856,17 +888,20 @@ def _bom_score_bin(bin_obj: Bin, tokens: list[str]) -> tuple[int, str]:
     """
     Calcule un score de pertinence entre une boîte et une liste de tokens normaux.
     """
-    score = 0
+    score: int = 0
     reasons: list[str] = []
 
-    title = ""
-    description = ""
+    title: str = ""
+    description: str = ""
     items: list = []
 
     if bin_obj.content and isinstance(bin_obj.content, dict):
-        title = normalize_string(bin_obj.content.get("title", ""))
-        description = normalize_string(bin_obj.content.get("description", ""))
+        t_val = bin_obj.content.get("title", "")
+        d_val = bin_obj.content.get("description", "")
         items = bin_obj.content.get("items") or []
+        
+        title = normalize_string(str(t_val) if t_val else "")
+        description = normalize_string(str(d_val) if d_val else "")
 
     items_str = " ".join(normalize_string(i) for i in items)
     
@@ -902,7 +937,7 @@ def _bom_score_bin(bin_obj: Bin, tokens: list[str]) -> tuple[int, str]:
 
         # 2. Fuzzy Matching fallback si non trouvé directement
         # On teste les mots individuels du titre, desc, items
-        all_words = title.split() + description.split() + items_str.split()
+        all_words = str(title).split() + str(description).split() + str(items_str).split()
         best_ratio = 0
         best_word = ""
         for w in all_words:
@@ -982,11 +1017,17 @@ async def bom_search(
 
                 cat_name = bin_obj.category.name if bin_obj.category else None
 
+                # Extraction purement séquentielle (sécurité types)
+                ref_item: str = title
+                parsed_items: list[str] = [str(i) for i in bin_items] if bin_items else []
+                if len(parsed_items) > 0:
+                     ref_item = parsed_items[0]
                 results.append({
                     "bin_id": bin_obj.id,
                     "title": title,
                     "description": description,
-                    "ref": bin_items[0] if bin_items else title,
+                    "ref": ref_item,
+                    "items": parsed_items,
                     "category": cat_name,
                     "drawer": drawer.name,
                     "drawer_id": drawer.id,
