@@ -1023,7 +1023,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
           {/* Edit Controls (Menus temporaires) */}
           {editMode === 'edit' && isFromCurrentLayer && (
-            <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center gap-2 sm:gap-3 transition-opacity duration-200 ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}`}>
+            <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center ${is1x1 ? 'gap-1 flex-wrap p-1' : 'gap-2 sm:gap-3'}`}>
               {/* Delete */}
               <button
                 onMouseDown={(e) => e.stopPropagation()}
@@ -1035,10 +1035,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                     handleDeleteBin(bin.bin_id);
                   }
                 }}
-                className="cancel-drag p-2 sm:p-2.5 bg-red-500 text-white rounded-full shadow hover:scale-110 hover:bg-red-600 transition-all cursor-pointer"
+                className={`cancel-drag ${is1x1 ? 'p-1.5' : 'p-2 sm:p-2.5'} bg-red-500 text-white rounded-full shadow hover:scale-110 hover:bg-red-600 transition-all cursor-pointer`}
                 title="Supprimer (Del)"
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={is1x1 ? 'w-3.5 h-3.5' : 'w-4 h-4 sm:w-5 sm:h-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -1053,10 +1053,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   copyToClipboard(bin);
                   setSelectedBin(null); // Optional: deselect after copy to remove overlay
                 }}
-                className="cancel-drag p-2 sm:p-2.5 bg-blue-500 text-white rounded-full shadow hover:scale-110 hover:bg-blue-600 transition-all cursor-pointer"
+                className={`cancel-drag ${is1x1 ? 'p-1.5' : 'p-2 sm:p-2.5'} bg-blue-500 text-white rounded-full shadow hover:scale-110 hover:bg-blue-600 transition-all cursor-pointer`}
                 title="Copier (Ctrl+C)"
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={is1x1 ? 'w-3.5 h-3.5' : 'w-4 h-4 sm:w-5 sm:h-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
@@ -1070,10 +1070,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
                   e.stopPropagation();
                   handleMoveToDock(bin.bin_id);
                 }}
-                className="cancel-drag p-2 sm:p-2.5 bg-yellow-500 text-white rounded-full shadow hover:scale-110 hover:bg-yellow-600 transition-all cursor-pointer"
+                className={`cancel-drag ${is1x1 ? 'p-1.5' : 'p-2 sm:p-2.5'} bg-yellow-500 text-white rounded-full shadow hover:scale-110 hover:bg-yellow-600 transition-all cursor-pointer`}
                 title="Mettre en zone d'attente (Unplaced Dock)"
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={is1x1 ? 'w-3.5 h-3.5' : 'w-4 h-4 sm:w-5 sm:h-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               </button>
@@ -1228,7 +1228,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       </div>
 
       {/* Unplaced Dock - Right Side */}
-      <div className="absolute top-[10rem] min-[901px]:top-20 right-1.5 min-[901px]:right-4 bottom-28 min-[901px]:bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
+      <div className="absolute top-[14rem] lg:top-28 right-1.5 lg:right-4 bottom-28 lg:bottom-20 z-10 pointer-events-none flex flex-col items-end justify-start">
         <div className="pointer-events-auto h-full">
           <UnplacedDock
             unplacedBins={unplacedBins}
