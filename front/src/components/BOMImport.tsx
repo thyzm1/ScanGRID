@@ -372,6 +372,35 @@ export default function BOMImport() {
                         </div>
 
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+                        {/* AI Loading progress bar */}
+                        {aiLoading && (
+                            <div className="mt-1 space-y-2">
+                                <div className="flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+                                        Ollama (llama3.2:1b) analyse votre BOM…
+                                    </span>
+                                    <span className="text-violet-500 font-medium">~15–60s</span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full bg-violet-100 dark:bg-violet-900/30 overflow-hidden">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
+                                        style={{
+                                            animation: 'ai-progress 2s ease-in-out infinite',
+                                        }}
+                                    />
+                                </div>
+                                <style>{`
+                                    @keyframes ai-progress {
+                                        0%   { width: 5%;  margin-left: 0%; }
+                                        50%  { width: 60%; margin-left: 20%; }
+                                        100% { width: 5%;  margin-left: 95%; }
+                                    }
+                                `}</style>
+                            </div>
+                        )}
+
                     </div>
                 </div>
 

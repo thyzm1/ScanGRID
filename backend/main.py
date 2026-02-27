@@ -1207,29 +1207,43 @@ async def bom_ai_parse(req: AIParseRequest):
     data = resp.json()
     raw_response: str = data.get("response", "").strip()
 
-    # ─── Parsing du JSON retourné par Ollama ───────────────────────────────────
+    # ─── Parsing du JSON retourné par Ollama ──────────────────────────────────
     # Le LLM peut mettre des ```json ... ``` autour — on les enlève
     cleaned = raw_response
     for fence in ("```json", "```JSON", "```"):
         cleaned = cleaned.replace(fence, "")
     cleaned = cleaned.strip().strip("`").strip()
 
-    # Trouve le premier '[' et le dernier ']'
-    start = cleaned.find("[")
-    end   = cleaned.rfind("]")
-    if start == -1 or end == -1 or end < start:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Le modèle n'a pas retourné un JSON valide. Réponse brute : {raw_response[:300]}"
-        )
+    # Détecte si la réponse est un tableau [...] ou un objet unique {...}
+    # Certains modèles retournent un seul objet quand il n'y a qu'un composant.
+    arr_start = cleaned.find("[")
+    obj_start = cleaned.find("{")
 
-    json_str = cleaned[start:end + 1]
-    try:
-        raw_list = _json.loads(json_str)
-    except _json.JSONDecodeError as e:
+    raw_list = None
+
+    # Cas 1 : tableau JSON classique [...]
+    if arr_start != -1 and (obj_start == -1 or arr_start < obj_start):
+        end = cleaned.rfind("]")
+        if end != -1 and end > arr_start:
+            try:
+                raw_list = _json.loads(cleaned[arr_start:end + 1])
+            except _json.JSONDecodeError:
+                pass
+
+    # Cas 2 : objet unique {...} — on l'emballe dans une liste
+    if raw_list is None and obj_start != -1:
+        end = cleaned.rfind("}")
+        if end != -1 and end > obj_start:
+            try:
+                obj = _json.loads(cleaned[obj_start:end + 1])
+                raw_list = [obj] if isinstance(obj, dict) else None
+            except _json.JSONDecodeError:
+                pass
+
+    if raw_list is None:
         raise HTTPException(
             status_code=422,
-            detail=f"JSON malformé retourné par le modèle : {e}. Début : {json_str[:200]}"
+            detail=f"Le modèle n'a pas retourné un JSON valide. Réponse brute : {raw_response[:400]}"
         )
 
     # ─── Normalisation & dédoublonnage ────────────────────────────────────────
