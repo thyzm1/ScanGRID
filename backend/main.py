@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List
+import unicodedata
+import difflib
 
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -842,10 +844,17 @@ async def locate_box(
 
 # ============= BOM — GENERATOR & IMPORT =============
 
+def normalize_string(s: str) -> str:
+    if not s:
+        return ""
+    # Enlever accents et passer en minuscule
+    s = str(s)
+    s = unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode('utf-8')
+    return s.lower()
+
 def _bom_score_bin(bin_obj: Bin, tokens: list[str]) -> tuple[int, str]:
     """
-    Calcule un score de pertinence entre une boîte et une liste de tokens.
-    Retourne (score, raison_textuelle).
+    Calcule un score de pertinence entre une boîte et une liste de tokens normaux.
     """
     score = 0
     reasons: list[str] = []
@@ -855,30 +864,60 @@ def _bom_score_bin(bin_obj: Bin, tokens: list[str]) -> tuple[int, str]:
     items: list = []
 
     if bin_obj.content and isinstance(bin_obj.content, dict):
-        title = str(bin_obj.content.get("title", "")).lower()
-        description = str(bin_obj.content.get("description", "")).lower()
+        title = normalize_string(bin_obj.content.get("title", ""))
+        description = normalize_string(bin_obj.content.get("description", ""))
         items = bin_obj.content.get("items") or []
 
-    items_str = " ".join(str(i).lower() for i in items)
-    full_text = f"{title} {description} {items_str}"
+    items_str = " ".join(normalize_string(i) for i in items)
+    
+    # Textes sans espaces pour le matching "colle" (ex: 10 k => 10k)
+    title_ns = title.replace(" ", "")
+    desc_ns = description.replace(" ", "")
+    items_ns = items_str.replace(" ", "")
+
+    full_text_ns = f"{title_ns} {desc_ns} {items_ns}"
 
     for tok in tokens:
-        if len(tok) < 2:
+        tok_ns = tok.replace(" ", "")
+        if len(tok_ns) < 2:
             continue
-        if tok in title:
-            if tok == title:
+            
+        # 1. Correspondance exacte ou inclusion sans espace
+        if tok_ns in title_ns:
+            if tok_ns == title_ns:
                 score += 100
                 reasons.append(f"titre exact '{tok}'")
             else:
                 score += 40
                 reasons.append(f"titre contient '{tok}'")
-        elif tok in description:
+            continue
+        elif tok_ns in desc_ns:
             score += 20
             reasons.append(f"desc. contient '{tok}'")
-        elif tok in items_str:
+            continue
+        elif tok_ns in items_ns:
             score += 30
             reasons.append(f"item contient '{tok}'")
-        elif tok in full_text:
+            continue
+
+        # 2. Fuzzy Matching fallback si non trouvé directement
+        # On teste les mots individuels du titre, desc, items
+        all_words = title.split() + description.split() + items_str.split()
+        best_ratio = 0
+        best_word = ""
+        for w in all_words:
+            if len(w) < 3:
+                continue
+            ratio = difflib.SequenceMatcher(None, tok_ns, w).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_word = w
+        
+        # Si la longueur du mot est >= 4 on tolère une erreur (ratio > 0.75 env)
+        if best_ratio > 0.78:
+            score += 15
+            reasons.append(f"similaire à '{best_word}'")
+        elif tok_ns in full_text_ns:
             score += 10
 
     return score, ", ".join(reasons) if reasons else "correspondance partielle"

@@ -12,6 +12,7 @@ import { IconDisplay } from './IconDisplay';
 import type { Bin } from '../types/api';
 
 import { apiClient } from '../services/api';
+import { fuzzyMatch } from '../utils/searchUtils';
 
 const PASTEL_COLORS = [
   '#F87171', '#FBBF24', '#34D399', '#60A5FA', '#818CF8', '#A78BFA', '#F472B6', '#FB923C', '#A3E635', '#2DD4BF', '#F43F5E',
@@ -389,18 +390,16 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
   const currentLayer = currentDrawer.layers[currentLayerIndex];
   if (!currentLayer) return null;
 
-  const normalizedFilter = filterText.trim().toLowerCase();
-
   const doesBinMatchFilters = (bin: Bin) => {
     if (selectedCategoryId && bin.category_id !== selectedCategoryId) return false;
 
-    if (!normalizedFilter) return true;
+    if (!filterText.trim()) return true;
 
-    const matchLabel = bin.content.title?.toLowerCase().includes(normalizedFilter);
-    const matchDesc = bin.content.description?.toLowerCase().includes(normalizedFilter);
+    const matchLabel = fuzzyMatch(filterText, bin.content.title || '');
+    const matchDesc = fuzzyMatch(filterText, bin.content.description || '');
     const matchContent = bin.content.items?.some((item) => {
       const value = typeof item === 'string' ? item : (item as any).name || '';
-      return value.toLowerCase().includes(normalizedFilter);
+      return fuzzyMatch(filterText, value);
     });
 
     return Boolean(matchLabel || matchDesc || matchContent);
