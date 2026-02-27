@@ -445,8 +445,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       .filter((b) => b.x_grid >= 0 && b.y_grid >= 0)
       .map((bin) => ({ bin, layerIndex: layerIdx }))
   );
-  const unplacedBins = currentLayer.bins.filter(
-    (bin) => doesBinMatchFilters(bin) && (bin.x_grid < 0 || bin.y_grid < 0)
+  const unplacedBins = currentDrawer.layers.flatMap(layer =>
+    layer.bins.filter(
+      (bin) => doesBinMatchFilters(bin) && (bin.x_grid < 0 || bin.y_grid < 0)
+    )
   );
 
   const GRID_WIDTH = currentDrawer.width_units * BASE_CELL_SIZE;
@@ -595,8 +597,19 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
     if (!binId) return;
 
-    const bin = unplacedBins.find(b => b.bin_id === binId) || currentLayer.bins.find(b => b.bin_id === binId);
-    if (!bin) return;
+    let originalLayerIndex = -1;
+    let bin: Bin | null = null;
+
+    for (let i = 0; i < currentDrawer.layers.length; i++) {
+      const found = currentDrawer.layers[i].bins.find(b => b.bin_id === binId);
+      if (found) {
+        bin = found;
+        originalLayerIndex = i;
+        break;
+      }
+    }
+
+    if (!bin || originalLayerIndex === -1) return;
 
     // Calculate dropped position
     const newX = Math.min(Math.max(0, Math.round(item.x)), currentDrawer.width_units - bin.width_units);
@@ -608,13 +621,23 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
       return;
     }
 
-    const updatedBins = currentLayer.bins.map(b =>
-      b.bin_id === binId ? { ...b, x_grid: newX, y_grid: newY } : b
-    );
+    const updatedLayers = currentDrawer.layers.map((layer, idx) => {
+      let layerBins = layer.bins;
+      // Remove from old layer if moving layers
+      if (idx === originalLayerIndex && idx !== currentLayerIndex) {
+        layerBins = layerBins.filter(b => b.bin_id !== binId);
+      }
 
-    const updatedLayers = currentDrawer.layers.map((layer, idx) =>
-      idx === currentLayerIndex ? { ...layer, bins: updatedBins } : layer
-    );
+      // Add/Update in target layer
+      if (idx === currentLayerIndex) {
+        if (originalLayerIndex === currentLayerIndex) {
+          layerBins = layerBins.map(b => b.bin_id === binId ? { ...b, x_grid: newX, y_grid: newY, layer_id: layer.layer_id } : b);
+        } else {
+          layerBins = [...layerBins, { ...bin, x_grid: newX, y_grid: newY, layer_id: layer.layer_id }];
+        }
+      }
+      return { ...layer, bins: layerBins };
+    });
 
     setCurrentDrawer({
       ...currentDrawer,
@@ -624,7 +647,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
     setDraggedDockBin(null);
 
     try {
-      await apiClient.updateBin(binId, { x_grid: newX, y_grid: newY });
+      await apiClient.updateBin(binId, { x_grid: newX, y_grid: newY, layer_id: currentDrawer.layers[currentLayerIndex].layer_id });
     } catch (err) {
       console.error(err);
     }
@@ -936,7 +959,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
             onBinDoubleClick(bin);
           }
         }}
-        className={`
+        className={`group
           relative h-full rounded-2xl overflow-hidden transition-all duration-300
           ${isSelected || isSearched ? 'ring-4 ring-blue-500 ring-opacity-70 shadow-2xl z-10' : 'shadow-lg'}
           ${editMode === 'view' && selectedBin?.bin_id !== bin.bin_id
@@ -999,8 +1022,8 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
         */}
 
           {/* Edit Controls (Menus temporaires) */}
-          {editMode === 'edit' && isFromCurrentLayer && isSelected && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center gap-3">
+          {editMode === 'edit' && isFromCurrentLayer && (
+            <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center gap-2 sm:gap-3 transition-opacity duration-200 ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}`}>
               {/* Delete */}
               <button
                 onMouseDown={(e) => e.stopPropagation()}
