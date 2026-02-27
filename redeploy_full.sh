@@ -109,6 +109,14 @@ if [ $? -eq 0 ]; then
 else
     echo "⚠️  Attention : La migration height_units a peut-être échoué (ou déjà faite)"
 fi
+
+echo "📏 Migration z_offset (boîtes multi-couches fractionnées)..."
+env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python migrate_z_offset.py
+if [ $? -eq 0 ]; then
+    echo "✅ Migration z_offset réussie"
+else
+    echo "⚠️  Attention : La migration z_offset a peut-être échoué (ou déjà faite)"
+fi
 echo "🗂️  Migration BOM Projects (tables projects + project_bins)..."
 env SCANGRID_DB_DIR=./data PYTHONPATH=. venv/bin/python - <<'EOF'
 import asyncio

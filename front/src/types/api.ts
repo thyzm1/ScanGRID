@@ -34,7 +34,8 @@ export interface Bin {
   y_grid: number;
   width_units: number;
   depth_units: number;
-  height_units: number; // Number of vertical layers occupied
+  height_units: number; // Number of vertical layers occupied (can be fractional like 0.5)
+  z_offset?: number; // Internal layer offset (e.g., 0.0 or 0.5)
   content: BinContent;
   color?: string;
   is_hole?: boolean;
@@ -67,6 +68,7 @@ export interface BinCreateRequest {
   width_units: number;
   depth_units: number;
   height_units: number;
+  z_offset?: number;
   content: BinContent;
   color?: string;
   is_hole?: boolean;
@@ -90,6 +92,7 @@ export interface BinUpdateRequest {
   width_units?: number;
   depth_units?: number;
   height_units?: number;
+  z_offset?: number;
   layer_id?: string;
   content?: Partial<BinContent>;
   color?: string;

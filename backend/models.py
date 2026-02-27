@@ -1,9 +1,9 @@
 """
 Modèles SQLAlchemy pour les tiroirs Gridfinity
 """
-from sqlalchemy import String, Integer, ForeignKey, JSON
+from sqlalchemy import String, Integer, Float, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import uuid
 import datetime
 
@@ -74,7 +74,8 @@ class Bin(Base):
     y_grid: Mapped[int] = mapped_column(Integer, nullable=False)
     width_units: Mapped[int] = mapped_column(Integer, nullable=False)
     depth_units: Mapped[int] = mapped_column(Integer, nullable=False)
-    height_units: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    height_units: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    z_offset: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     content: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, default=lambda: {"title": "Nouvelle boîte"})
     color: Mapped[Optional[str]] = mapped_column(String, nullable=True, default="#3b82f6")
     is_hole: Mapped[Optional[bool]] = mapped_column(Integer, nullable=True, default=False)

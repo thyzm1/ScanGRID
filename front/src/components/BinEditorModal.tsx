@@ -536,11 +536,12 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
                 <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Hauteur (couches)</label>
                 <input
                   type="number"
-                  min="1"
+                  min="0.5"
                   max="5"
+                  step="0.5"
                   className="input w-full text-center font-mono"
                   value={heightUnits}
-                  onChange={(e) => setHeightUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => setHeightUnits(Math.max(0.5, parseFloat(e.target.value) || 1))}
                 />
               </div>
             </div>
@@ -555,8 +556,8 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
               type="button"
               onClick={() => setCanPlaceOnTop((prev) => !prev)}
               className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${canPlaceOnTop
-                  ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20'
-                  : 'border-amber-300 bg-amber-50/80 dark:bg-amber-900/20'
+                ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20'
+                : 'border-amber-300 bg-amber-50/80 dark:bg-amber-900/20'
                 }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -589,8 +590,8 @@ export default function BinEditorModal({ bin, onClose, onSave }: BinEditorModalP
               type="button"
               onClick={() => setCanRotate((prev) => !prev)}
               className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${canRotate
-                  ? 'border-blue-300 bg-blue-50/80 dark:bg-blue-900/20'
-                  : 'border-gray-300 bg-gray-50/80 dark:bg-gray-900/20'
+                ? 'border-blue-300 bg-blue-50/80 dark:bg-blue-900/20'
+                : 'border-gray-300 bg-gray-50/80 dark:bg-gray-900/20'
                 }`}
             >
               <div className="flex items-center justify-between gap-3">

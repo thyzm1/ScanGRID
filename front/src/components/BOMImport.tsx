@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../services/api';
+import { useStore } from '../store/useStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -16,14 +17,7 @@ interface MatchResult {
     confidence: number;
 }
 
-interface AIComponent {
-    designation: string;
-    qty: number;
-    reference: string;
-    package: string;
-}
-
-// ─── Print styles ─────────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────
 
 const PRINT_STYLE_ID = 'bom-import-print-style';
 
@@ -105,14 +99,22 @@ Bouton poussoir momentané`;
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function BOMImport() {
-    const [inputText, setInputText] = useState('');
+    const {
+        aiImportStatus,
+        setAiImportStatus,
+        aiImportResult,
+        setAiImportResult,
+        aiImportError,
+        setAiImportError,
+        aiImportText,
+        setAiImportText,
+        resetAiImport
+    } = useStore();
+
+    const [inputText, setInputText] = useState(aiImportText || '');
     const [results, setResults] = useState<MatchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [pdfLoading, setPdfLoading] = useState(false);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiComponents, setAiComponents] = useState<AIComponent[]>([]);
-    const [aiModel, setAiModel] = useState('');
-    const [aiAnalyzed, setAiAnalyzed] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [analyzed, setAnalyzed] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,14 +174,13 @@ export default function BOMImport() {
 
     const handleAIAnalyze = async () => {
         if (!inputText.trim()) return;
-        setAiLoading(true);
-        setError(null);
-        setAiAnalyzed(false);
+        setAiImportStatus('running');
+        setAiImportError(null);
+        setAiImportText(inputText);
         try {
             const data = await apiClient.analyzeBOMWithAI(inputText);
-            setAiComponents(data.components);
-            setAiModel(data.model);
-            setAiAnalyzed(true);
+            setAiImportResult({ components: data.components, model: data.model });
+            setAiImportStatus('success');
             // Auto-populate textarea with AI-cleaned designations for easy further matching
             if (data.components.length > 0) {
                 const lines = data.components.map(
@@ -190,9 +191,8 @@ export default function BOMImport() {
                 setResults([]);
             }
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Erreur IA');
-        } finally {
-            setAiLoading(false);
+            setAiImportError(e instanceof Error ? e.message : 'Erreur IA');
+            setAiImportStatus('error');
         }
     };
 
@@ -343,11 +343,11 @@ export default function BOMImport() {
                             {/* AI parse button */}
                             <button
                                 onClick={handleAIAnalyze}
-                                disabled={!inputText.trim() || aiLoading}
+                                disabled={!inputText.trim() || aiImportStatus === 'running'}
                                 title="Filtrage intelligent par IA locale (Ollama llama3.2:3b)"
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {aiLoading ? (
+                                {aiImportStatus === 'running' ? (
                                     <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />IA en cours (~30s)...</>
                                 ) : (
                                     <>🤖 Filtrer avec IA</>
@@ -356,7 +356,7 @@ export default function BOMImport() {
 
                             {inputText ? (
                                 <button
-                                    onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); setAiComponents([]); setAiAnalyzed(false); }}
+                                    onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); resetAiImport(); }}
                                     className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
                                 >
                                     Effacer
@@ -372,9 +372,10 @@ export default function BOMImport() {
                         </div>
 
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+                        {aiImportError && <p className="text-sm text-red-600 dark:text-red-400">Erreur IA : {aiImportError}</p>}
 
                         {/* AI Loading progress bar */}
-                        {aiLoading && (
+                        {aiImportStatus === 'running' && (
                             <div className="mt-1 space-y-2">
                                 <div className="flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
                                     <span className="flex items-center gap-1.5">
@@ -505,7 +506,7 @@ export default function BOMImport() {
 
                 {/* AI Results */}
                 <AnimatePresence>
-                    {aiAnalyzed && aiComponents.length > 0 && (
+                    {aiImportStatus === 'success' && aiImportResult && aiImportResult.components.length > 0 && (
                         <motion.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -515,9 +516,9 @@ export default function BOMImport() {
                             <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
                                 <h3 className="font-semibold text-sm flex items-center gap-2">
                                     🤖 Résultat IA
-                                    <span className="text-[var(--color-text-secondary)] font-normal text-xs">({aiModel})</span>
+                                    <span className="text-[var(--color-text-secondary)] font-normal text-xs">({aiImportResult?.model})</span>
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 font-medium">
-                                        {aiComponents.length} composant{aiComponents.length !== 1 ? 's' : ''}
+                                        {aiImportResult?.components.length} composant{aiImportResult?.components.length !== 1 ? 's' : ''}
                                     </span>
                                 </h3>
                                 <span className="text-xs text-[var(--color-text-secondary)]">
@@ -534,7 +535,7 @@ export default function BOMImport() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {aiComponents.map((c, i) => (
+                                        {aiImportResult?.components.map((c, i) => (
                                             <tr key={i} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] transition-colors">
                                                 <td className="px-4 py-2.5 text-xs text-[var(--color-text-secondary)]">{i + 1}</td>
                                                 <td className="px-4 py-2.5 font-medium">{c.designation}</td>

@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { Drawer, Bin, Category } from '../types/api';
 
+export interface AIComponent {
+  designation: string;
+  qty: number;
+  reference: string;
+  package: string;
+}
+
 export type ViewMode = '2D' | '3D' | 'organizer' | 'settings' | 'bom' | 'bom-import' | 'projects';
 export type EditMode = 'view' | 'edit';
 
@@ -50,6 +57,17 @@ interface AppState {
   // Searched bin (for dimming others)
   searchedBinId: string | null;
   setSearchedBinId: (id: string | null) => void;
+
+  // AI Import Background State
+  aiImportStatus: 'idle' | 'running' | 'success' | 'error';
+  setAiImportStatus: (status: 'idle' | 'running' | 'success' | 'error') => void;
+  aiImportResult: { components: AIComponent[], model: string } | null;
+  setAiImportResult: (result: { components: AIComponent[], model: string } | null) => void;
+  aiImportError: string | null;
+  setAiImportError: (error: string | null) => void;
+  aiImportText: string;
+  setAiImportText: (text: string) => void;
+  resetAiImport: () => void;
 
   // Sidebar
   sidebarOpen: boolean;
@@ -166,6 +184,17 @@ export const useStore = create<AppState>((set) => ({
   // Searched bin
   searchedBinId: null,
   setSearchedBinId: (id) => set({ searchedBinId: id }),
+
+  // AI Import Background State
+  aiImportStatus: 'idle',
+  setAiImportStatus: (status) => set({ aiImportStatus: status }),
+  aiImportResult: null,
+  setAiImportResult: (result) => set({ aiImportResult: result }),
+  aiImportError: null,
+  setAiImportError: (error) => set({ aiImportError: error }),
+  aiImportText: '',
+  setAiImportText: (text) => set({ aiImportText: text }),
+  resetAiImport: () => set({ aiImportStatus: 'idle', aiImportResult: null, aiImportError: null, aiImportText: '' }),
 
   // Sidebar
   sidebarOpen: true,
