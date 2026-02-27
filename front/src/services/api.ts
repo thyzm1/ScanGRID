@@ -203,7 +203,7 @@ class ApiClient {
     return this.request(`/projects/${projectId}/bins`);
   }
 
-  async addProjectBin(projectId: string, data: { bin_id: string; qty: number; note?: string }): Promise<any> {
+  async addProjectBin(projectId: string, data: { bin_id: string; qty: number; note?: string; url?: string }): Promise<any> {
     return this.request(`/projects/${projectId}/bins`, { method: 'POST', body: JSON.stringify(data) });
   }
 

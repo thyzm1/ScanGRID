@@ -122,6 +122,7 @@ class ProjectBin(Base):
     bin_id: Mapped[str] = mapped_column(String, nullable=False)   # soft ref
     qty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     note: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    url: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # lien datasheet / PDF
 
     # Relation
     project: Mapped["Project"] = relationship("Project", back_populates="project_bins")

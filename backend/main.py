@@ -1129,6 +1129,7 @@ class ProjectBinAdd(BaseModel):
     bin_id: str
     qty: int = 1
     note: str | None = None
+    url: str | None = None
 
 
 # ============= PROJECTS — CRUD =============
@@ -1217,6 +1218,7 @@ async def get_project_bins(project_id: str, db: AsyncSession = Depends(get_db)):
             "bin_id": pb.bin_id,
             "qty": pb.qty,
             "note": pb.note,
+            "url": pb.url,
             "found": bin_obj is not None,
         }
         if bin_obj and bin_obj.content:
@@ -1260,14 +1262,18 @@ async def add_project_bin(project_id: str, data: ProjectBinAdd, db: AsyncSession
     existing = next((pb for pb in project.project_bins if pb.bin_id == data.bin_id), None)
     if existing:
         existing.qty += data.qty
+        if data.url:
+            existing.url = data.url
         await db.commit()
-        return {"pb_id": existing.id, "bin_id": existing.bin_id, "qty": existing.qty, "note": existing.note}
+        return {"pb_id": existing.id, "bin_id": existing.bin_id, "qty": existing.qty,
+                "note": existing.note, "url": existing.url}
 
-    pb = ProjectBin(project_id=project_id, bin_id=data.bin_id, qty=data.qty, note=data.note)
+    pb = ProjectBin(project_id=project_id, bin_id=data.bin_id, qty=data.qty,
+                    note=data.note, url=data.url)
     db.add(pb)
     await db.commit()
     await db.refresh(pb)
-    return {"pb_id": pb.id, "bin_id": pb.bin_id, "qty": pb.qty, "note": pb.note}
+    return {"pb_id": pb.id, "bin_id": pb.bin_id, "qty": pb.qty, "note": pb.note, "url": pb.url}
 
 
 @api_router.delete("/projects/{project_id}/bins/{pb_id}")
