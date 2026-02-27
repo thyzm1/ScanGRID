@@ -1023,7 +1023,10 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
 
           {/* Edit Controls (Menus temporaires) */}
           {editMode === 'edit' && isFromCurrentLayer && (
-            <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center ${is1x1 ? 'gap-1 flex-wrap p-1' : 'gap-2 sm:gap-3'}`}>
+            <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center transition-opacity duration-200 
+              ${bin.width_units <= 1 ? 'flex-col gap-1.5' : 'gap-2 sm:gap-3'} 
+              ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}
+            `}>
               {/* Delete */}
               <button
                 onMouseDown={(e) => e.stopPropagation()}
