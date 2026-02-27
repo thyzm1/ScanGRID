@@ -167,16 +167,27 @@ class ApiClient {
     });
   }
 
-  async extractPDFText(file: File): Promise<{ lines: string[]; raw_text: string }> {
+  async extractPDFText(file: File): Promise<{ lines: string[]; raw_text: string; page_count: number }> {
     const formData = new FormData();
     formData.append('file', file);
     const url = `${this.baseUrl}/bom/extract-pdf`;
     const response = await fetch(url, { method: 'POST', body: formData });
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
-      throw new Error(err.detail || 'PDF extraction failed');
+      const err = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(err.detail || 'Erreur extraction PDF');
     }
     return response.json();
+  }
+
+  async analyzeBOMWithAI(text: string): Promise<{
+    components: { designation: string; qty: number; reference: string; package: string }[];
+    raw_response: string;
+    model: string;
+  }> {
+    return this.request('/bom/ai-parse', {
+      method: 'POST',
+      body: JSON.stringify({ text, max_chars: 8000 }),
+    });
   }
 
   // ========================================================================

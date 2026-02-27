@@ -1133,7 +1133,129 @@ async def bom_extract_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Erreur extraction PDF : {e}")
 
 
-# ============= PROJECTS — Pydantic models =============
+# ============= AI BOM PARSE (Ollama) =============
+
+class AIParseRequest(BaseModel):
+    text: str
+    max_chars: int = 8000   # guard: llama3.2:1b context ~8k tokens
+
+class AIComponentEntry(BaseModel):
+    designation: str
+    qty: int = 1
+    reference: str = ""
+    package: str = ""
+
+class AIParseResult(BaseModel):
+    components: list[AIComponentEntry]
+    raw_response: str
+    model: str
+
+_OLLAMA_URL = "http://localhost:11434/api/generate"
+_OLLAMA_MODEL = "llama3.2:1b"
+
+_BOM_SYSTEM_PROMPT = """Tu es un parseur de nomenclature électronique (BOM). 
+RÈGLES STRICTES :
+- Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ou après.
+- Chaque élément du tableau doit avoir exactement ces 4 champs : "designation", "qty", "reference", "package".
+- "designation" : nom du composant sans la quantité (ex: "Résistance 10kΩ 0603").
+- "qty" : quantité entière (1 si non précisée).
+- "reference" : référence schématique si présente (R1, C2, U3…), sinon "".  
+- "package" : boîtier si présent (0402, SOT-23, DIP-8…), sinon "".
+- IGNORE les lignes qui ne sont pas des composants : en-têtes de colonnes, titres, pieds de page, numéros de page, noms de sociétés, URLs, dates.
+- ÉLIMINE les doublons (garde 1 ligne unique par composant, additionne les quantités).
+- NE JAMAIS inclure de commentaires ou de texte libre dans la réponse.
+FORMAT OBLIGATOIRE :
+[{"designation":"...","qty":1,"reference":"","package":""},...]"""
+
+@api_router.post("/bom/ai-parse", response_model=AIParseResult)
+async def bom_ai_parse(req: AIParseRequest):
+    """
+    Envoie le texte extrait d'un PDF à Ollama (llama3.2:1b) pour un filtrage
+    sémantique : suppression des lignes non-composants, dédoublonnage, 
+    structuration en JSON propre.
+    """
+    import httpx
+    import json as _json
+
+    text_to_parse = req.text[:req.max_chars]
+
+    payload = {
+        "model": _OLLAMA_MODEL,
+        "prompt": f"{_BOM_SYSTEM_PROMPT}\n\nTexte à analyser :\n{text_to_parse}",
+        "stream": False,
+        "options": {
+            "temperature": 0.05,   # quasi-déterministe
+            "num_predict": 2048,
+            "stop": ["\n\n\n"],    # évite les divagations
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(_OLLAMA_URL, json=payload)
+            resp.raise_for_status()
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama introuvable sur localhost:11434. Vérifiez que le service tourne (ollama serve)."
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Ollama n'a pas répondu dans les 90s.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Ollama : {e}")
+
+    data = resp.json()
+    raw_response: str = data.get("response", "").strip()
+
+    # ─── Parsing du JSON retourné par Ollama ───────────────────────────────────
+    # Le LLM peut mettre des ```json ... ``` autour — on les enlève
+    cleaned = raw_response
+    for fence in ("```json", "```JSON", "```"):
+        cleaned = cleaned.replace(fence, "")
+    cleaned = cleaned.strip().strip("`").strip()
+
+    # Trouve le premier '[' et le dernier ']'
+    start = cleaned.find("[")
+    end   = cleaned.rfind("]")
+    if start == -1 or end == -1 or end < start:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Le modèle n'a pas retourné un JSON valide. Réponse brute : {raw_response[:300]}"
+        )
+
+    json_str = cleaned[start:end + 1]
+    try:
+        raw_list = _json.loads(json_str)
+    except _json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"JSON malformé retourné par le modèle : {e}. Début : {json_str[:200]}"
+        )
+
+    # ─── Normalisation & dédoublonnage ────────────────────────────────────────
+    seen: dict[str, AIComponentEntry] = {}
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        designation = str(item.get("designation", "")).strip()
+        if not designation or len(designation) < 2:
+            continue
+        qty = max(1, int(item.get("qty", 1)))
+        ref = str(item.get("reference", "")).strip()
+        pkg = str(item.get("package", "")).strip()
+        key = designation.lower()
+        if key in seen:
+            seen[key].qty += qty    # additionne les quantités si doublon
+        else:
+            seen[key] = AIComponentEntry(designation=designation, qty=qty, reference=ref, package=pkg)
+
+    components = list(seen.values())
+    logger.info(f"✅ AI BOM parse : {len(raw_list)} lignes → {len(components)} composants uniques")
+
+    return AIParseResult(components=components, raw_response=raw_response, model=_OLLAMA_MODEL)
+
+
+
 
 class ProjectCreate(BaseModel):
     name: str

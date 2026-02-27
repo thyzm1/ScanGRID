@@ -16,6 +16,13 @@ interface MatchResult {
     confidence: number;
 }
 
+interface AIComponent {
+    designation: string;
+    qty: number;
+    reference: string;
+    package: string;
+}
+
 // ─── Print styles ─────────────────────────────────────────────────────────────
 
 const PRINT_STYLE_ID = 'bom-import-print-style';
@@ -102,6 +109,10 @@ export default function BOMImport() {
     const [results, setResults] = useState<MatchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [pdfLoading, setPdfLoading] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiComponents, setAiComponents] = useState<AIComponent[]>([]);
+    const [aiModel, setAiModel] = useState('');
+    const [aiAnalyzed, setAiAnalyzed] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [analyzed, setAnalyzed] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +167,32 @@ export default function BOMImport() {
             setError(e instanceof Error ? e.message : 'Erreur lors de l\'analyse');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAIAnalyze = async () => {
+        if (!inputText.trim()) return;
+        setAiLoading(true);
+        setError(null);
+        setAiAnalyzed(false);
+        try {
+            const data = await apiClient.analyzeBOMWithAI(inputText);
+            setAiComponents(data.components);
+            setAiModel(data.model);
+            setAiAnalyzed(true);
+            // Auto-populate textarea with AI-cleaned designations for easy further matching
+            if (data.components.length > 0) {
+                const lines = data.components.map(
+                    (c) => c.reference ? `${c.reference} ${c.designation}` : c.designation
+                );
+                setInputText(lines.join('\n'));
+                setAnalyzed(false);
+                setResults([]);
+            }
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Erreur IA');
+        } finally {
+            setAiLoading(false);
         }
     };
 
@@ -297,23 +334,29 @@ export default function BOMImport() {
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:from-blue-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        Analyse en cours...
-                                    </>
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyse en cours...</>
                                 ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                        </svg>
-                                        Analyser la BOM
-                                    </>
+                                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>Analyser la BOM</>
+                                )}
+                            </button>
+
+                            {/* AI parse button */}
+                            <button
+                                onClick={handleAIAnalyze}
+                                disabled={!inputText.trim() || aiLoading}
+                                title="Filtrage intelligent par IA locale (Ollama llama3.2:1b)"
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {aiLoading ? (
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />IA en cours (~30s)...</>
+                                ) : (
+                                    <>🤖 Filtrer avec IA</>
                                 )}
                             </button>
 
                             {inputText ? (
                                 <button
-                                    onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); }}
+                                    onClick={() => { setInputText(''); setResults([]); setAnalyzed(false); setAiComponents([]); setAiAnalyzed(false); }}
                                     className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
                                 >
                                     Effacer
@@ -430,6 +473,59 @@ export default function BOMImport() {
                         Aucun résultat. Vérifiez que votre inventaire contient des composants.
                     </div>
                 )}
+
+                {/* AI Results */}
+                <AnimatePresence>
+                    {aiAnalyzed && aiComponents.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="rounded-2xl border border-violet-300/50 dark:border-violet-700/50 bg-[var(--color-bg)] shadow-sm overflow-hidden"
+                        >
+                            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+                                <h3 className="font-semibold text-sm flex items-center gap-2">
+                                    🤖 Résultat IA
+                                    <span className="text-[var(--color-text-secondary)] font-normal text-xs">({aiModel})</span>
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 font-medium">
+                                        {aiComponents.length} composant{aiComponents.length !== 1 ? 's' : ''}
+                                    </span>
+                                </h3>
+                                <span className="text-xs text-[var(--color-text-secondary)]">
+                                    Le texte a été nettoyé et réinjecté dans la zone de saisie
+                                </span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-[var(--color-border)]">
+                                            {['#', 'Désignation', 'Réf. schéma', 'Boîtier', 'Qté'].map((h) => (
+                                                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {aiComponents.map((c, i) => (
+                                            <tr key={i} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] transition-colors">
+                                                <td className="px-4 py-2.5 text-xs text-[var(--color-text-secondary)]">{i + 1}</td>
+                                                <td className="px-4 py-2.5 font-medium">{c.designation}</td>
+                                                <td className="px-4 py-2.5 font-mono text-xs text-blue-500">{c.reference || '—'}</td>
+                                                <td className="px-4 py-2.5 text-xs">
+                                                    {c.package ? (
+                                                        <span className="px-2 py-0.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)]">{c.package}</span>
+                                                    ) : '—'}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <span className="font-mono text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] px-2 py-0.5 rounded-lg">×{c.qty}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
