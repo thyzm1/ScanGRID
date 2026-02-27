@@ -1024,7 +1024,7 @@ export default function GridEditor3({ onBinClick, onBinDoubleClick }: GridEditor
           {/* Edit Controls (Menus temporaires) */}
           {editMode === 'edit' && isFromCurrentLayer && (
             <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center transition-opacity duration-200 
-              ${bin.width_units <= 1 ? 'flex-col gap-1.5' : 'gap-2 sm:gap-3'} 
+              ${is1x1 ? 'flex-wrap gap-1 p-1 content-center' : bin.width_units <= 1 ? 'flex-col gap-1.5' : 'gap-2 sm:gap-3'} 
               ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}
             `}>
               {/* Delete */}
