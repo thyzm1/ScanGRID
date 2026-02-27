@@ -60,6 +60,7 @@ function App() {
     setSidebarOpen,
     selectedBin,
     setSelectedBin,
+    aiImportStatus,
   } = useStore();
 
   // Sync dark mode
@@ -222,9 +223,14 @@ function App() {
           {/* BOM CENTER pill group */}
           <div className="flex items-center gap-0.5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl px-1 py-0.5">
             <span className="text-[9px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-[0.15em] px-1.5 hidden sm:block">BOM</span>
-            <NavBtn icon="🤖" label="Import IA" title="Import BOM via Ollama llama3.2:3b"
-              active={viewMode === 'bom-import'} color="violet"
-              onClick={() => setViewMode(viewMode === 'bom-import' ? '2D' : 'bom-import')} />
+            <div className="relative">
+              <NavBtn icon="🤖" label="Import IA" title="Import BOM via Ollama llama3.2:3b"
+                active={viewMode === 'bom-import'} color="violet"
+                onClick={() => setViewMode(viewMode === 'bom-import' ? '2D' : 'bom-import')} />
+              {aiImportStatus === 'success' && viewMode !== 'bom-import' && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-[var(--color-bg-secondary)]" />
+              )}
+            </div>
             <NavBtn icon="📋" label="Générateur" title="Générateur BOM + Export PDF"
               active={viewMode === 'bom'} color="emerald"
               onClick={() => setViewMode(viewMode === 'bom' ? '2D' : 'bom')} />

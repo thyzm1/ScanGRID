@@ -500,34 +500,33 @@ export default function ProjectManager() {
                             ))}
                         </div>
                     )}
-
-                    {/* Search bar */}
-                    <div className="mt-4 relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Rechercher un composant à associer au projet..."
-                            className="w-full pl-10 pr-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm focus:outline-none focus:border-teal-500 transition-colors"
-                        />
-                        {searchLoading && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 <div className="flex flex-col-reverse lg:grid lg:grid-cols-3 gap-4">
                     {/* Search results */}
-                    <div className="lg:col-span-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-[var(--color-border)]">
-                            <h3 className="font-semibold text-sm">
+                    <div className="lg:col-span-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <h3 className="font-semibold text-sm whitespace-nowrap">
                                 Inventaire{' '}
                                 {searchResults.length > 0 && (
                                     <span className="text-[var(--color-text-secondary)] font-normal">({searchResults.length} résultat{searchResults.length !== 1 ? 's' : ''})</span>
                                 )}
                             </h3>
+                            {/* Search bar */}
+                            <div className="relative w-full sm:max-w-md">
+                                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Rechercher un composant à associer au projet..."
+                                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm focus:outline-none focus:border-teal-500 transition-colors"
+                                />
+                                {searchLoading && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {searchResults.length === 0 ? (
