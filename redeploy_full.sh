@@ -39,8 +39,7 @@ if [ ! -d "venv" ]; then
     echo "⚠️  Venv manquant, création..."
     python3 -m venv venv
 fi
-source venv/bin/activate
-pip install -r requirements.txt
+venv/bin/pip install -r requirements.txt
 echo "✅ Dépendances installées (incl. pypdf + python-multipart pour BOM PDF)"
 
 # 3.1. Vérification et configuration d'Ollama
@@ -85,7 +84,7 @@ if ollama list | grep -q "llama3.2:1b"; then
 fi
 
 # Vérification rapide de la syntaxe
-python3 -m py_compile main.py
+venv/bin/python -m py_compile main.py
 if [ $? -eq 0 ]; then
     echo "✅ Syntaxe Backend OK"
 else
